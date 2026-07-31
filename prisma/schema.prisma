@@ -1,0 +1,702 @@
+// This is your Prisma schema file
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+generator client {
+  provider = "prisma-client"
+  output   = "../src/generated/prisma"
+}
+
+datasource db {
+  // ──────────────────────────────────────────
+  // PRODUCTION: PostgreSQL
+  //   provider = "postgresql"
+  //   url      = env("DATABASE_URL")
+  // ──────────────────────────────────────────
+  // DEVELOPMENT: SQLite
+  provider = "sqlite"
+  url      = "file:./dev.db"
+}
+
+// Uncomment the block below and comment the block above for PostgreSQL:
+// datasource db {
+//   provider = "postgresql"
+//   url      = env("DATABASE_URL")
+// }
+
+// ──────────────────────────────────────────
+// ENUMS
+// ──────────────────────────────────────────
+
+enum Role {
+  STUDENT
+  INSTRUCTOR
+  ADMIN
+}
+
+enum Plan {
+  FREE
+  PRO
+  ENTERPRISE
+}
+
+enum BadgeType {
+  FIRST_LESSON
+  FAST_LEARNER
+  TOP_SCORE
+  STREAK_3
+  STREAK_7
+  STREAK_30
+  COURSE_COMPLETE
+  PERFECT_QUIZ
+  SOCIAL_BUTTERFLY
+  EARLY_ADOPTER
+}
+
+enum AchievementType {
+  BADGE
+  LEVEL_UP
+  STREAK
+  CERTIFICATE
+}
+
+enum LessonContentType {
+  VIDEO
+  PDF
+  TEXT
+  LINK
+}
+
+enum EnrollmentStatus {
+  ACTIVE
+  COMPLETED
+  CANCELLED
+}
+
+// ──────────────────────────────────────────
+// USER
+// ──────────────────────────────────────────
+
+model User {
+  id            String    @id @default(cuid())
+  name          String?
+  email         String    @unique
+  emailVerified DateTime?
+  image         String?
+  passwordHash  String?
+  role          Role      @default(STUDENT)
+  plan          Plan      @default(FREE)
+
+  // Instructor-specific fields
+  headline String?
+  bio      String?
+
+  // Relations
+  accounts          Account[]
+  sessions          Session[]
+  enrollments       Enrollment[]
+  lessonProgress    LessonProgress[]
+  quizAttempts      QuizAttempt[]
+  certificates      Certificate[]
+  badges            UserBadge[]
+  streak            UserStreak?
+  xp                UserXP?
+  achievements      Achievement[]
+  notifications     Notification[]
+  reviews           Review[]
+  settings          UserSettings?
+  courses           Course[]               @relation("CourseInstructor")
+  pushSubscriptions PushSubscription[]
+  challengeEntries  ChallengeParticipant[]
+  clanMemberships   ClanMember[]
+  weeklyRankings    WeeklyRanking[]
+  subscriptions     Subscription[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────
+// SUBSCRIPTION
+// ──────────────────────────────────────────
+
+model Subscription {
+  id                    String   @id @default(cuid())
+  plan                  Plan
+  status                String   @default("active") // active, canceled, past_due, trialing
+  stripeSubscriptionId  String?  @unique
+  stripeCustomerId      String?
+  currentPeriodStart    DateTime?
+  currentPeriodEnd      DateTime?
+  cancelAtPeriodEnd     Boolean  @default(false)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([stripeSubscriptionId])
+  @@index([status])
+}
+
+// ──────────────────────────────────────────
+// NEXT-AUTH (Auth.js) MODELS
+// ──────────────────────────────────────────
+
+model Account {
+  id                String  @id @default(cuid())
+  userId            String
+  type              String
+  provider          String
+  providerAccountId String
+  refresh_token     String?
+  access_token      String?
+  expires_at        Int?
+  token_type        String?
+  scope             String?
+  id_token          String?
+  session_state     String?
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([provider, providerAccountId])
+}
+
+model Session {
+  id           String   @id @default(cuid())
+  sessionToken String   @unique
+  userId       String
+  expires      DateTime
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+model VerificationToken {
+  identifier String
+  token      String   @unique
+  expires    DateTime
+
+  @@unique([identifier, token])
+}
+
+// ──────────────────────────────────────────
+// COURSE
+// ──────────────────────────────────────────
+
+model Course {
+  id           String  @id @default(cuid())
+  title        String
+  description  String
+  thumbnailUrl String?
+  category     String?
+  price        Float?
+  published    Boolean @default(false)
+
+  // Instructor FK
+  instructorId String?
+  instructor   User?   @relation("CourseInstructor", fields: [instructorId], references: [id])
+
+  // Relations
+  modules      Module[]
+  enrollments  Enrollment[]
+  quizzes      Quiz[]
+  certificates Certificate[]
+  reviews      Review[]
+
+  // Approval workflow
+  approvalStatus  String? @default("draft") // "draft" | "pending" | "approved" | "rejected"
+  rejectionReason String?
+
+  // Featured (destaque)
+  featured Boolean @default(false)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([instructorId])
+  @@index([approvalStatus])
+  @@index([featured])
+}
+
+// ──────────────────────────────────────────
+// MODULE
+// ──────────────────────────────────────────
+
+model Module {
+  id          String  @id @default(cuid())
+  title       String
+  description String?
+  orderIndex  Int
+
+  // FK
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Relations
+  lessons Lesson[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([courseId])
+}
+
+// ──────────────────────────────────────────
+// LESSON
+// ──────────────────────────────────────────
+
+model Lesson {
+  id          String            @id @default(cuid())
+  title       String
+  description String?
+  contentType LessonContentType
+  contentUrl  String?
+  contentBody String?
+  duration    Int?
+  orderIndex  Int
+
+  // FK
+  moduleId String
+  module   Module @relation(fields: [moduleId], references: [id], onDelete: Cascade)
+
+  // Relations
+  progress LessonProgress[]
+  quizzes  Quiz[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([moduleId])
+}
+
+// ──────────────────────────────────────────
+// ENROLLMENT
+// ──────────────────────────────────────────
+
+model Enrollment {
+  id     String           @id @default(cuid())
+  status EnrollmentStatus @default(ACTIVE)
+
+  // FK
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  enrolledAt  DateTime?
+  completedAt DateTime?
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ──────────────────────────────────────────
+// LESSON PROGRESS
+// ──────────────────────────────────────────
+
+model LessonProgress {
+  id             String  @id @default(cuid())
+  completed      Boolean @default(false)
+  watchedSeconds Int?
+
+  // FK
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  lessonId String
+  lesson   Lesson @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+
+  lastAccessedAt DateTime?
+  completedAt    DateTime?
+
+  @@unique([userId, lessonId])
+  @@index([userId])
+  @@index([lessonId])
+}
+
+// ──────────────────────────────────────────
+// QUIZ
+// ──────────────────────────────────────────
+
+model Quiz {
+  id           String  @id @default(cuid())
+  title        String
+  description  String?
+  passingScore Int     @default(70)
+  maxAttempts  Int     @default(3)
+
+  // FK (optional: linked to a lesson OR course-level final exam)
+  lessonId String?
+  lesson   Lesson? @relation(fields: [lessonId], references: [id], onDelete: Cascade)
+  courseId String?
+  course   Course? @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  // Relations
+  questions Question[]
+  attempts  QuizAttempt[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([lessonId])
+  @@index([courseId])
+}
+
+// ──────────────────────────────────────────
+// QUESTION
+// ──────────────────────────────────────────
+
+model Question {
+  id         String @id @default(cuid())
+  text       String
+  orderIndex Int
+
+  // FK
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  // Relations
+  options QuestionOption[]
+
+  createdAt DateTime @default(now())
+
+  @@index([quizId])
+}
+
+// ──────────────────────────────────────────
+// QUESTION OPTION
+// ──────────────────────────────────────────
+
+model QuestionOption {
+  id        String  @id @default(cuid())
+  text      String
+  isCorrect Boolean @default(false)
+
+  // FK
+  questionId String
+  question   Question @relation(fields: [questionId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([questionId])
+}
+
+// ──────────────────────────────────────────
+// QUIZ ATTEMPT
+// ──────────────────────────────────────────
+
+model QuizAttempt {
+  id      String  @id @default(cuid())
+  score   Int
+  answers String // JSON: { questionId: optionId, ... }
+  passed  Boolean @default(false)
+
+  // FK
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  quizId String
+  quiz   Quiz   @relation(fields: [quizId], references: [id], onDelete: Cascade)
+
+  startedAt   DateTime  @default(now())
+  completedAt DateTime?
+
+  @@index([userId])
+  @@index([quizId])
+}
+
+// ──────────────────────────────────────────
+// USER BADGE (Gamification)
+// ──────────────────────────────────────────
+
+model UserBadge {
+  id          String    @id @default(cuid())
+  badge       BadgeType
+  title       String
+  description String?
+  icon        String?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  earnedAt DateTime @default(now())
+
+  @@unique([userId, badge])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────
+// USER STREAK (Gamification)
+// ──────────────────────────────────────────
+
+model UserStreak {
+  id             String    @id @default(cuid())
+  currentStreak  Int       @default(0)
+  longestStreak  Int       @default(0)
+  lastActivityAt DateTime?
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────
+// USER XP (Gamification)
+// ──────────────────────────────────────────
+
+model UserXP {
+  id    String @id @default(cuid())
+  xp    Int    @default(0)
+  level Int    @default(1)
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────
+// USER SETTINGS (Notification Preferences)
+// ──────────────────────────────────────────
+
+enum SoundTone {
+  CHIME
+  POP
+  ALERT
+}
+
+model UserSettings {
+  id               String    @id @default(cuid())
+  soundEnabled     Boolean   @default(true)
+  soundTone        SoundTone @default(CHIME)
+  vibrationEnabled Boolean   @default(true)
+  doNotDisturb     Boolean   @default(false)
+  dndStartTime     String? // HH:MM format, e.g. "22:00"
+  dndEndTime       String? // HH:MM format, e.g. "07:00"
+
+  userId String @unique
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────
+// NOTIFICATION
+// ──────────────────────────────────────────
+
+enum NotificationType {
+  LESSON_COMPLETED
+  COURSE_PUBLISHED
+  ENROLLMENT_CONFIRMED
+  QUIZ_PASSED
+  CERTIFICATE_ISSUED
+  ACHIEVEMENT_EARNED
+  XP_GAINED
+  ADMIN_ALERT
+}
+
+model Notification {
+  id      String           @id @default(cuid())
+  type    NotificationType
+  title   String
+  message String
+  link    String?
+  read    Boolean          @default(false)
+
+  // FK
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([userId, read])
+  @@index([createdAt])
+}
+
+model PushSubscription {
+  id        String  @id @default(cuid())
+  userId    String
+  user      User    @relation(fields: [userId], references: [id], onDelete: Cascade)
+  endpoint  String  @unique
+  p256dh    String
+  auth      String
+  userAgent String?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([endpoint])
+}
+
+model Achievement {
+  id          String          @id @default(cuid())
+  type        AchievementType
+  title       String
+  description String?
+  xpGained    Int             @default(0)
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────
+// CERTIFICATE
+// ──────────────────────────────────────────
+
+model Certificate {
+  id              String @id @default(cuid())
+  certificateCode String @unique
+
+  // FK
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  issuedAt DateTime @default(now())
+
+  @@unique([userId, courseId])
+  @@index([userId])
+  @@index([courseId])
+}
+
+// ──────────────────────────────────────────
+// REVIEW (Course Ratings)
+// ──────────────────────────────────────────
+
+model Review {
+  id      String  @id @default(cuid())
+  rating  Int // 1–5
+  comment String?
+
+  // FK
+  userId   String
+  user     User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  courseId String
+  course   Course @relation(fields: [courseId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@unique([userId, courseId])
+  @@index([courseId])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────
+// SOCIAL GAMIFICATION: CHALLENGES
+// ──────────────────────────────────────────
+
+enum ChallengeStatus {
+  PENDING
+  ACTIVE
+  COMPLETED
+  EXPIRED
+}
+
+model Challenge {
+  id          String          @id @default(cuid())
+  title       String
+  description String?
+  goalType    String // "LESSONS_COMPLETED" | "XP_EARNED" | "QUIZ_SCORE" | "STREAK_DAYS"
+  goalValue   Int // e.g. 5 lessons, 200 XP
+  xpReward    Int             @default(100)
+  badgeReward String? // badge type if any
+  startsAt    DateTime
+  endsAt      DateTime
+  status      ChallengeStatus @default(ACTIVE)
+
+  // Relations
+  participants ChallengeParticipant[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([status])
+  @@index([startsAt, endsAt])
+}
+
+model ChallengeParticipant {
+  id        String  @id @default(cuid())
+  progress  Int     @default(0)
+  completed Boolean @default(false)
+
+  // FK
+  challengeId String
+  challenge   Challenge @relation(fields: [challengeId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  completedAt DateTime?
+
+  @@unique([challengeId, userId])
+  @@index([challengeId])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────
+// SOCIAL GAMIFICATION: CLANS
+// ──────────────────────────────────────────
+
+model Clan {
+  id          String  @id @default(cuid())
+  name        String  @unique
+  description String?
+  icon        String? @default("🏰")
+  xp          Int     @default(0) // Total clan XP
+  level       Int     @default(1)
+
+  // Relations
+  members ClanMember[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+}
+
+model ClanMember {
+  id   String @id @default(cuid())
+  role String @default("MEMBER") // "LEADER" | "CO_LEADER" | "MEMBER"
+
+  // FK
+  clanId String
+  clan   Clan   @relation(fields: [clanId], references: [id], onDelete: Cascade)
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  joinedAt DateTime @default(now())
+
+  @@unique([clanId, userId])
+  @@index([clanId])
+  @@index([userId])
+}
+
+// ──────────────────────────────────────────
+// WEEKLY RANKING
+// ──────────────────────────────────────────
+
+model WeeklyRanking {
+  id        String   @id @default(cuid())
+  weekStart DateTime
+  weekEnd   DateTime
+  xpGained  Int      @default(0)
+  rank      Int?
+
+  // FK
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@unique([userId, weekStart])
+  @@index([weekStart, xpGained])
+  @@index([userId])
+}

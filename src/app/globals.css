@@ -1,0 +1,155 @@
+@import "tailwindcss";
+
+/* ──────────────────────────────────────────
+   DARK MODE
+   ────────────────────────────────────────── */
+
+@custom-variant dark (&:where(.dark, .dark *));
+
+/* Smooth transitions for theme switching */
+html {
+  transition: color-scheme 0.3s ease;
+}
+
+html.dark {
+  color-scheme: dark;
+}
+
+/* Custom scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
+}
+
+::-webkit-scrollbar-track {
+  background: transparent;
+}
+
+::-webkit-scrollbar-thumb {
+  background: #d4d4d8;
+  border-radius: 3px;
+}
+
+.dark ::-webkit-scrollbar-thumb {
+  background: #52525b;
+}
+
+/* Prose styles for dark mode */
+.dark .prose {
+  color: #d4d4d8;
+}
+
+/* Animations */
+@keyframes fade-in {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+@keyframes slide-in {
+  from { opacity: 0; transform: translateX(-8px); }
+  to { opacity: 1; transform: translateX(0); }
+}
+
+.animate-fade-in {
+  animation: fade-in 0.3s ease-out;
+}
+
+.animate-slide-in {
+  animation: slide-in 0.3s ease-out;
+}
+
+/* Print styles for certificates */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  body {
+    background: white !important;
+    -webkit-print-color-adjust: exact !important;
+    print-color-adjust: exact !important;
+  }
+}
+
+/* Skeleton pulse animation */
+@keyframes pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.5; }
+}
+
+/* Shimmer animation for skeleton loading cards */
+@keyframes shimmer {
+  100% {
+    transform: translateX(100%);
+  }
+}
+
+/* Level-up glow pulse animation */
+@keyframes level-up-glow {
+  0% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0.6);
+  }
+  50% {
+    box-shadow: 0 0 20px 6px rgba(251, 191, 36, 0.3);
+  }
+  100% {
+    box-shadow: 0 0 0 0 rgba(251, 191, 36, 0);
+  }
+}
+
+@keyframes level-up-pulse {
+  0% {
+    transform: scale(1);
+  }
+  25% {
+    transform: scale(1.25);
+  }
+  50% {
+    transform: scale(0.95);
+  }
+  75% {
+    transform: scale(1.1);
+  }
+  100% {
+    transform: scale(1);
+  }
+}
+
+.level-up-glow {
+  animation: level-up-glow 1.2s ease-out 3, level-up-pulse 0.6s ease-in-out 1;
+}
+
+/* Notification enter animation */
+@keyframes notification-enter {
+  from {
+    opacity: 0;
+    transform: translateY(-8px) scale(0.96);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0) scale(1);
+  }
+}
+.notification-enter {
+  animation: notification-enter 0.2s ease-out;
+}
+
+
+@theme {
+  --font-sans: var(--font-geist-sans);
+  --font-mono: var(--font-geist-mono);
+}
+
+@layer base {
+  * {
+    @apply border-zinc-200;
+  }
+  body {
+    @apply bg-white text-zinc-900;
+  }
+}
+
+@layer utilities {
+  .text-balance {
+    text-wrap: balance;
+  }
+}
