@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
-import { notifyAllStudents } from "@/lib/event-bus";
 
 export async function POST(
   _request: Request,

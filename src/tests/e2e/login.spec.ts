@@ -8,8 +8,8 @@ test.describe("Authentication", () => {
 
   test("should show error for invalid credentials", async ({ page }) => {
     await page.goto("/login");
-    await page.fill('input[name="email"]', "wrong@email.com");
-    await page.fill('input[name="password"]', "wrongpass");
+    await page.fill('#email', "wrong@email.com");
+    await page.fill('#password', "wrongpass");
     await page.click('button[type="submit"]');
 
     // Should show error message
@@ -18,8 +18,8 @@ test.describe("Authentication", () => {
 
   test("should redirect to dashboard after login", async ({ page }) => {
     await page.goto("/login");
-    await page.fill('input[name="email"]', "admin@lms.com");
-    await page.fill('input[name="password"]', "admin123");
+    await page.fill('#email', "admin@lms.com");
+    await page.fill('#password', "admin123");
     await page.click('button[type="submit"]');
 
     // Wait for redirect to dashboard

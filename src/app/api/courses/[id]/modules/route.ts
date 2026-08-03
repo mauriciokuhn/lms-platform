@@ -56,7 +56,7 @@ export async function POST(
       nextIndex = (lastModule?.orderIndex ?? 0) + 1;
     }
 
-    const module = await db.module.create({
+    const newModule = await db.module.create({
       data: {
         title,
         description: description || null,
@@ -65,7 +65,7 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(module, { status: 201 });
+    return NextResponse.json(newModule, { status: 201 });
   } catch (error) {
     console.error("POST /api/courses/[id]/modules error:", error);
     return NextResponse.json({ error: "Erro ao criar módulo" }, { status: 500 });

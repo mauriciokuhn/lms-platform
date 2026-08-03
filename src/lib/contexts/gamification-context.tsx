@@ -100,17 +100,6 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
   const [error, setError] = useState<string | null>(null);
 
   const fetchData = useCallback(async () => {
-    if (!session?.user) {
-      setProgress(null);
-      setRanking(null);
-      setLoading(false);
-      setError(null);
-      return;
-    }
-
-    setLoading(true);
-    setError(null);
-
     try {
       const [progressRes, rankingRes] = await Promise.all([
         fetch("/api/gamification/progress"),
@@ -134,15 +123,21 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user]);
+  }, []);
 
   useEffect(() => {
-    fetchData();
-  }, [fetchData]);
+    if (!session?.user) return;
+    (async () => {
+      await fetchData();
+    })();
+  }, [fetchData, session?.user]);
 
   const refresh = useCallback(async () => {
+    if (!session?.user) return;
+    setLoading(true);
+    setError(null);
     await fetchData();
-  }, [fetchData]);
+  }, [fetchData, session?.user]);
 
   const refetchProgress = useCallback(async (): Promise<GamificationProgressData | null> => {
     try {
@@ -157,6 +152,14 @@ export function GamificationProvider({ children }: { children: ReactNode }) {
     }
     return null;
   }, []);
+
+  // Reset state during render when the user signs out (avoids setState-in-effect)
+  if (!session?.user && (progress !== null || ranking !== null || loading || error !== null)) {
+    setProgress(null);
+    setRanking(null);
+    setLoading(false);
+    setError(null);
+  }
 
   return (
     <GamificationContext.Provider

@@ -45,7 +45,10 @@ export async function GET() {
         });
 
         // Aggregate XP by user
-        const xpMap = new Map<string, { user: any; xp: number }>();
+        const xpMap = new Map<
+          string,
+          { user: { id: string; name: string | null; image: string | null; email: string }; xp: number }
+        >();
         for (const a of achievements) {
           const existing = xpMap.get(a.userId);
           if (existing) {

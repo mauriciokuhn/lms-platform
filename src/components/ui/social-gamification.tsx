@@ -2,8 +2,6 @@
 
 import { useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
-import Link from "next/link";
-import { motion } from "framer-motion";
 
 // ──────────────────────────────────────────
 // Types
@@ -49,6 +47,7 @@ interface WeeklyRankEntry {
 // ──────────────────────────────────────────
 
 export function ChallengeCard({ challenge, onJoin }: { challenge: Challenge; onJoin: (id: string) => void }) {
+  // eslint-disable-next-line react-hooks/purity -- countdown needs current time at render
   const daysLeft = Math.max(0, Math.ceil((new Date(challenge.endsAt).getTime() - Date.now()) / (1000 * 60 * 60 * 24)));
   const progressPct = Math.min(Math.round((challenge.myProgress / challenge.goalValue) * 100), 100);
 
@@ -223,8 +222,15 @@ export function WeeklyRanking({ ranking }: { ranking: WeeklyRankEntry[] }) {
 
 export function SocialSection({ className }: { className?: string }) {
   const { data: session } = useSession();
+  interface PastChallenge {
+    id: string;
+    title: string;
+    completedAt: string | null;
+    xpReward: number | null;
+  }
+
   const [challenges, setChallenges] = useState<Challenge[]>([]);
-  const [pastChallenges, setPastChallenges] = useState<any[]>([]);
+  const [pastChallenges, setPastChallenges] = useState<PastChallenge[]>([]);
   const [clans, setClans] = useState<Clan[]>([]);
   const [weeklyRanking, setWeeklyRanking] = useState<WeeklyRankEntry[]>([]);
   const [weeklyInfo, setWeeklyInfo] = useState({ userRank: null as number | null, userXpGained: 0, totalParticipants: 0 });

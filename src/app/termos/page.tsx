@@ -1,11 +1,18 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getServerTranslation } from "@/lib/i18n/server-translation";
 
-export const metadata = {
-  title: "Termos de Uso",
-  description: "Termos e condições de uso da LMS Platform.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation();
+  return {
+    title: t("terms.title"),
+    description: "Termos e condições de uso da LMS Platform.",
+  };
+}
 
-export default function TermsPage() {
+export default async function TermsPage() {
+  const { t } = await getServerTranslation();
+
   const sections = [
     {
       title: "1. Aceitação dos Termos",
@@ -35,10 +42,10 @@ export default function TermsPage() {
       content: `Ao utilizar a plataforma, você concorda em:
         • Não compartilhar respostas de questionários publicamente
         • Não tentar burlar o sistema de avaliação
-        •Não utilizar a plataforma para fins ilegais
+        • Não utilizar a plataforma para fins ilegais
         • Não violar direitos de propriedade intelectual
         • Não enviar conteúdo malicioso ou spam
-      • Não criar múltiplas contas para obter benefícios indevidos`,
+        • Não criar múltiplas contas para obter benefícios indevidos`,
     },
     {
       title: "5. Propriedade Intelectual",
@@ -95,20 +102,19 @@ export default function TermsPage() {
       <div className="mx-auto max-w-3xl">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm text-zinc-400">
-          <Link href="/" className="hover:text-zinc-600 dark:hover:text-zinc-300">Início</Link>
+          <Link href="/" className="hover:text-zinc-600 dark:hover:text-zinc-300">{t("common.home")}</Link>
           <span>/</span>
-          <span className="text-zinc-600 dark:text-zinc-300">Termos de Uso</span>
+          <span className="text-zinc-600 dark:text-zinc-300">{t("terms.title")}</span>
         </div>
 
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white sm:text-4xl">
-          Termos de Uso
+          {t("terms.title")}
         </h1>
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Última atualização: Julho de 2026
+          {t("terms.updated")}
         </p>
         <p className="mt-6 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-          Estes Termos de Uso regulam o acesso e a utilização da plataforma LMS Platform
-          por seus usuários. Leia atentamente antes de criar sua conta.
+          {t("terms.intro")}
         </p>
 
         <div className="mt-10 space-y-10">
@@ -126,8 +132,7 @@ export default function TermsPage() {
 
         <div className="mt-12 rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Ao criar uma conta na LMS Platform, você declara ter lido, compreendido e
-            concordado com estes Termos de Uso.
+            {t("terms.consent")}
           </p>
         </div>
       </div>

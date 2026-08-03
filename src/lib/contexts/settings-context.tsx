@@ -69,14 +69,6 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
 
   const fetchSettings = useCallback(async () => {
-    setLoading(true);
-
-    if (!session?.user) {
-      setSettings(SETTINGS_DEFAULTS);
-      setLoading(false);
-      return;
-    }
-
     try {
       const res = await fetch("/api/settings");
       if (res.ok) {
@@ -88,11 +80,14 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     } finally {
       setLoading(false);
     }
-  }, [session?.user]);
+  }, []);
 
   useEffect(() => {
-    fetchSettings();
-  }, [fetchSettings]);
+    if (!session?.user) return;
+    (async () => {
+      await fetchSettings();
+    })();
+  }, [fetchSettings, session?.user]);
 
   const updateSettings = useCallback(
     async (partial: Partial<UserSettingsData>): Promise<boolean> => {
@@ -114,6 +109,12 @@ export function SettingsProvider({ children }: { children: ReactNode }) {
     },
     []
   );
+
+  // Reset to defaults during render when the user signs out (avoids setState-in-effect)
+  if (!session?.user && (loading || settings !== SETTINGS_DEFAULTS)) {
+    setSettings(SETTINGS_DEFAULTS);
+    setLoading(false);
+  }
 
   const dndActive = isInDNDWindow(settings);
   const isSoundEnabled = settings.soundEnabled && !dndActive;

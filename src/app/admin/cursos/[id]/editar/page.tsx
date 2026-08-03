@@ -205,13 +205,13 @@ export default function EditCoursePage({
     if (!confirm("Excluir esta aula?")) return;
 
     try {
-      const module = course?.modules.find((m) =>
+      const parentModule = course?.modules.find((m) =>
         m.lessons.some((l) => l.id === lessonId)
       );
-      if (!module) return;
+      if (!parentModule) return;
 
       const res = await fetch(
-        `/api/courses/${courseId}/modules/${module.id}/lessons/${lessonId}`,
+        `/api/courses/${courseId}/modules/${parentModule.id}/lessons/${lessonId}`,
         { method: "DELETE" }
       );
 
@@ -341,7 +341,8 @@ export default function EditCoursePage({
               className="block w-full text-sm text-zinc-500 dark:text-zinc-400 file:mr-4 file:rounded-lg file:border-0 file:bg-zinc-900 dark:file:bg-white file:px-4 file:py-2 file:text-sm file:font-semibold file:text-white dark:file:text-zinc-900 hover:file:bg-zinc-800 dark:hover:file:bg-zinc-200"
             />
             {thumbnailPreview && (
-              <img src={thumbnailPreview} alt="Preview" className="h-16 w-24 rounded-lg object-cover shadow-sm" />
+                // eslint-disable-next-line @next/next/no-img-element -- local thumbnail preview
+                <img src={thumbnailPreview} alt="Preview" className="h-16 w-24 rounded-lg object-cover shadow-sm" />
             )}
           </div>
         </div>

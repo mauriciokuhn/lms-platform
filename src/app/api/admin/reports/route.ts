@@ -48,7 +48,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),
@@ -95,7 +95,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),
@@ -135,7 +135,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),

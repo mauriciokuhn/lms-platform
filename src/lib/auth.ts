@@ -53,18 +53,18 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
     async jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
-        token.role = (user as any).role as string;
-        token.plan = ((user as any).plan || "FREE") as "FREE" | "PRO" | "ENTERPRISE";
+        token.role = user.role as string;
+        token.plan = (user.plan || "FREE") as "FREE" | "PRO" | "ENTERPRISE";
         token.isDemo = user.email === "demo@lms.com";
       }
       return token;
     },
     async session({ session, token }) {
       if (session.user) {
-        (session.user as any).id = token.id as string;
-        (session.user as any).role = token.role as string;
-        (session.user as any).plan = token.plan as string;
-        (session.user as any).isDemo = token.isDemo as boolean | undefined;
+        session.user.id = token.id as string;
+        session.user.role = token.role as string;
+        session.user.plan = token.plan as "FREE" | "PRO" | "ENTERPRISE";
+        session.user.isDemo = token.isDemo as boolean | undefined;
       }
       return session;
     },

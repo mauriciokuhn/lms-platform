@@ -2,7 +2,7 @@
 
 import { useState, useEffect } from "react";
 import { useRouter } from "next/navigation";
-import { showSuccess, showError } from "@/components/ui/toast-utils";
+import { showSuccess } from "@/components/ui/toast-utils";
 
 export default function NewCoursePage() {
   const router = useRouter();
@@ -171,6 +171,7 @@ export default function NewCoursePage() {
             </div>
             {thumbnailPreview && (
               <div className="shrink-0">
+                {/* eslint-disable-next-line @next/next/no-img-element -- local thumbnail preview */}
                 <img
                   src={thumbnailPreview}
                   alt="Preview"

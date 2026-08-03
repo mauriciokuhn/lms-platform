@@ -14,6 +14,7 @@
  */
 
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 // ──────────────────────────────────────────
 // Types
@@ -34,19 +35,42 @@ interface PushPayload {
   tag?: string;
 }
 
+/** Normalized shape of the web-push API (all members optional). */
+interface WebPushApi {
+  setVapidDetails?: (...args: string[]) => void;
+  sendNotification?: (
+    subscription: PushSubscriptionData,
+    payload: string,
+    options?: { TTL?: number }
+  ) => Promise<void>;
+  generateVAPIDKeys?: () => { publicKey: string; privateKey: string };
+}
+
+interface WebPushModule {
+  default: WebPushApi | null;
+  setVapidDetails?: WebPushApi["setVapidDetails"];
+  sendNotification?: WebPushApi["sendNotification"];
+  generateVAPIDKeys?: WebPushApi["generateVAPIDKeys"];
+}
+
 // Dynamically import web-push (optional dependency)
-// eslint-disable-next-line @typescript-eslint/no-explicit-any
-let webpushModule: any = null;
-async function getWebpush() {
+let webpushModule: WebPushModule | null = null;
+async function getWebpush(): Promise<WebPushApi | null> {
   if (!webpushModule) {
     try {
-      // @ts-ignore - web-push is optional
-      webpushModule = await import("web-push");
+      // @ts-expect-error -- web-push is an optional dependency, not installed
+      webpushModule = (await import("web-push")) as WebPushModule;
     } catch {
-      webpushModule = { default: null };
+      webpushModule = null;
     }
   }
-  return webpushModule.default || webpushModule;
+  if (!webpushModule) return null;
+  const api = webpushModule.default || webpushModule;
+  return {
+    setVapidDetails: api.setVapidDetails,
+    sendNotification: api.sendNotification,
+    generateVAPIDKeys: api.generateVAPIDKeys,
+  };
 }
 
 // ──────────────────────────────────────────
@@ -74,10 +98,10 @@ export async function saveSubscription(
         userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       },
     });
-    console.log(`✅ Push subscription saved for user ${userId}`);
-  } catch (error) {
-    console.warn("⚠️ Push subscription model not yet migrated. Run: npx prisma generate && npx prisma db push");
-    console.log(`📢 Push subscription (not persisted): ${subscription.endpoint}`);
+    logger.info("Push subscription saved", { userId });
+  } catch {
+    logger.warn("Push subscription model not yet migrated. Run: npx prisma generate && npx prisma db push");
+    logger.info("Push subscription not persisted", { endpoint: subscription.endpoint });
   }
 
   return { success: true };
@@ -96,27 +120,30 @@ export async function sendPushNotification(
     const webpush = await getWebpush();
 
     if (!webpush || !process.env.VAPID_PRIVATE_KEY) {
-      console.log("Push notification (simulated):", payload.title);
+      logger.info("Push notification (simulated)", { title: payload.title });
       return { success: true, simulated: true };
     }
 
-    webpush.setVapidDetails(
+    webpush.setVapidDetails?.(
       process.env.VAPID_EMAIL || "mailto:admin@lms.com",
       process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
       process.env.VAPID_PRIVATE_KEY
     );
 
-    await webpush.default.sendNotification(
-      subscription as any,
-      JSON.stringify(payload),
-      { TTL: 86400 }
-    );
+    const sendFn = webpush.sendNotification;
+    if (!sendFn) {
+      logger.info("Push notification (simulated)", { title: payload.title });
+      return { success: true, simulated: true };
+    }
+
+    await sendFn(subscription, JSON.stringify(payload), { TTL: 86400 });
 
     return { success: true };
-  } catch (error: any) {
+  } catch (error: unknown) {
     // Subscription expired or invalid — remove from DB
-    if (error?.statusCode === 410) {
-      console.warn("⚠️ Push subscription expired:", subscription.endpoint);
+    const statusCode = (error as { statusCode?: number } | null)?.statusCode;
+    if (statusCode === 410) {
+      logger.warn("Push subscription expired", { endpoint: subscription.endpoint });
       try {
         await db.pushSubscription.deleteMany({
           where: { endpoint: subscription.endpoint },
@@ -125,7 +152,7 @@ export async function sendPushNotification(
       return { success: false, expired: true };
     }
 
-    console.error("❌ Push notification error:", error);
+    logger.error("Push notification error", { error: error instanceof Error ? error.message : String(error) });
     return { success: false, error };
   }
 }
@@ -142,7 +169,7 @@ export async function notifyUserPush(
   // from a PushSubscription model
   // For now, this is a placeholder
 
-  console.log(`📢 Push notification for user ${userId}:`, payload.title);
+  logger.info("Push notification sent to user", { userId, title: payload.title });
   return { success: true, delivered: 0 };
 }
 

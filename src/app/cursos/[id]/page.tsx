@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, use } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -43,6 +43,14 @@ interface InstructorInfo {
   bio: string | null;
 }
 
+interface Review {
+  id: string;
+  rating: number;
+  comment: string | null;
+  createdAt: string;
+  user: { id: string; name: string | null; email: string; image: string | null };
+}
+
 interface Course {
   id: string;
   title: string;
@@ -71,14 +79,14 @@ export default function CourseDetailPage({
   const [isEnrolled, setIsEnrolled] = useState(false);
 
   // Reviews state
-  const [reviews, setReviews] = useState<any[]>([]);
+  const [reviews, setReviews] = useState<Review[]>([]);
   const [averageRating, setAverageRating] = useState<number | null>(null);
   const [totalReviews, setTotalReviews] = useState(0);
   const [ratingDistribution, setRatingDistribution] = useState<Record<number, number> | null>(null);
   const [reviewsLoading, setReviewsLoading] = useState(true);
-  const [userReview, setUserReview] = useState<any>(null);
+  const [userReview, setUserReview] = useState<Review | null>(null);
 
-  async function loadReviews() {
+  const loadReviews = useCallback(async () => {
     const userId = session?.user?.id;
     try {
       const res = await fetch(`/api/courses/${id}/reviews`);
@@ -92,7 +100,7 @@ export default function CourseDetailPage({
         // Find current user's review
         if (userId) {
           const mine = data.reviews.find(
-            (r: any) => r.user.id === userId
+            (r: Review) => r.user.id === userId
           );
           setUserReview(mine || null);
         }
@@ -102,7 +110,7 @@ export default function CourseDetailPage({
     } finally {
       setReviewsLoading(false);
     }
-  }
+  }, [id, session?.user?.id]);
 
   useEffect(() => {
     async function loadData() {
@@ -133,10 +141,11 @@ export default function CourseDetailPage({
 
   // Load reviews separately
   useEffect(() => {
-    if (!loading && session?.user) {
-      loadReviews();
-    }
-  }, [loading, session]);
+    if (!loading || !session?.user) return;
+    (async () => {
+      await loadReviews();
+    })();
+  }, [loading, session, loadReviews]);
 
   async function handleEnroll() {
     if (!session?.user) {

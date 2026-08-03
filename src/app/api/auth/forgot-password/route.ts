@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import crypto from "crypto";
 import { strictLimiter } from "@/lib/rate-limit";
 import { sendPasswordResetEmail } from "@/lib/email";
+import { logger } from "@/lib/logger";
 
 /**
  * POST /api/auth/forgot-password
@@ -16,7 +17,7 @@ export async function POST(request: Request) {
     // Rate limit: 5 requests per minute
     const rateCheck = strictLimiter.check(request);
     if (!rateCheck.allowed) {
-      return NextResponse.json({ error: rateCheck.error }, { status: 429 });
+      return NextResponse.json({ error: rateCheck.error }, { status: 429, headers: rateCheck.headers });
     }
 
     const body = await request.json();
@@ -58,13 +59,13 @@ export async function POST(request: Request) {
     const resetLink = `${baseUrl}/redefinir-senha/${token}`;
 
     // ── Send email via Resend ──
-    console.log(`🔐 Password reset requested for ${email}`);
-    console.log(`   Link: ${resetLink}`);
-    console.log(`   Expires: ${expires.toISOString()}`);
+    // Log WITHOUT the reset link/token (sensitive). The e-mail body carries
+    // the link; the log only records that a request happened.
+    logger.info("Password reset requested", { email, expiresAt: expires.toISOString() });
 
     const emailResult = await sendPasswordResetEmail(email, resetLink);
     if (!emailResult.success) {
-      console.warn("⚠️ Email not sent:", emailResult.reason || emailResult.error);
+      logger.warn("Password reset email not sent", { reason: String(emailResult.reason || emailResult.error) });
     }
 
     return NextResponse.json({
@@ -73,7 +74,7 @@ export async function POST(request: Request) {
         "Se o email estiver cadastrado, você receberá um link de redefinição.",
     });
   } catch (error) {
-    console.error("POST /api/auth/forgot-password error:", error);
+    logger.error("POST /api/auth/forgot-password error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao processar solicitação" },
       { status: 500 }

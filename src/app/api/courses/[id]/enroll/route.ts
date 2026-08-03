@@ -20,6 +20,16 @@ export async function POST(
 
     const { id: courseId } = await params;
 
+    // Verify the course exists (avoid a raw FK failure -> 500)
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, title: true },
+    });
+
+    if (!course) {
+      return NextResponse.json({ error: "Curso não encontrado" }, { status: 404 });
+    }
+
     // Check if already enrolled
     const existing = await db.enrollment.findUnique({
       where: {
@@ -50,7 +60,7 @@ export async function POST(
     await notifyUser(session.user.id, {
       type: "ENROLLMENT_CONFIRMED",
       title: "Matrícula confirmada! 📚",
-      message: `Você se matriculou em "${enrollment.course.title}". Bons estudos!`,
+      message: `Você se matriculou em "${course.title}". Bons estudos!`,
       link: `/cursos/${courseId}`,
     });
 

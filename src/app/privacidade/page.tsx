@@ -1,11 +1,18 @@
 import Link from "next/link";
+import type { Metadata } from "next";
+import { getServerTranslation } from "@/lib/i18n/server-translation";
 
-export const metadata = {
-  title: "Política de Privacidade",
-  description: "Política de privacidade da LMS Platform em conformidade com a LGPD.",
-};
+export async function generateMetadata(): Promise<Metadata> {
+  const { t } = await getServerTranslation();
+  return {
+    title: t("privacy.title"),
+    description: "Política de privacidade da LMS Platform em conformidade com a LGPD.",
+  };
+}
 
-export default function PrivacyPage() {
+export default async function PrivacyPage() {
+  const { t } = await getServerTranslation();
+
   const sections = [
     {
       title: "1. Dados Coletados",
@@ -90,21 +97,19 @@ export default function PrivacyPage() {
       <div className="mx-auto max-w-3xl">
         {/* Breadcrumb */}
         <div className="mb-6 flex items-center gap-2 text-sm text-zinc-400">
-          <Link href="/" className="hover:text-zinc-600 dark:hover:text-zinc-300">Início</Link>
+          <Link href="/" className="hover:text-zinc-600 dark:hover:text-zinc-300">{t("common.home")}</Link>
           <span>/</span>
-          <span className="text-zinc-600 dark:text-zinc-300">Privacidade</span>
+          <span className="text-zinc-600 dark:text-zinc-300">{t("privacy.title")}</span>
         </div>
 
         <h1 className="text-3xl font-bold text-zinc-900 dark:text-white sm:text-4xl">
-          Política de Privacidade
+          {t("privacy.title")}
         </h1>
         <p className="mt-3 text-sm text-zinc-500 dark:text-zinc-400">
-          Última atualização: Julho de 2026
+          {t("privacy.updated")}
         </p>
         <p className="mt-6 text-base leading-relaxed text-zinc-600 dark:text-zinc-300">
-          A LMS Platform leva sua privacidade a sério. Esta política descreve como coletamos,
-          usamos e protegemos suas informações pessoais em conformidade com a Lei Geral de
-          Proteção de Dados Pessoais (LGPD - Lei nº 13.709/2018).
+          {t("privacy.intro")}
         </p>
 
         <div className="mt-10 space-y-10">
@@ -122,8 +127,7 @@ export default function PrivacyPage() {
 
         <div className="mt-12 rounded-xl border border-zinc-200 bg-zinc-50 p-6 dark:border-zinc-800 dark:bg-zinc-900">
           <p className="text-sm text-zinc-500 dark:text-zinc-400">
-            Ao criar uma conta na LMS Platform, você declara ter lido e concordado com
-            esta Política de Privacidade.
+            {t("privacy.consent")}
           </p>
         </div>
       </div>
