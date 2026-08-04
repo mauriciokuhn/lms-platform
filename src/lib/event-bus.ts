@@ -16,7 +16,6 @@
  */
 
 import { db } from "@/lib/db";
-import type { NotificationType } from "@/generated/prisma/client";
 
 // ──────────────────────────────────────────
 // Types
@@ -196,7 +195,7 @@ export async function notifyUser(
 ): Promise<NotificationPayload> {
   const notification = await db.notification.create({
     data: {
-      type: data.type as NotificationType,
+      type: data.type as any,
       title: data.title,
       message: data.message,
       link: data.link || null,
@@ -242,7 +241,7 @@ export async function notifyAdmins(
     admins.map((admin) =>
       db.notification.create({
         data: {
-          type: data.type as NotificationType,
+          type: data.type as any,
           title: data.title,
           message: data.message,
           link: data.link || null,
@@ -291,7 +290,7 @@ export async function notifyAllStudents(
     students.map((student) =>
       db.notification.create({
         data: {
-          type: data.type as NotificationType,
+          type: data.type as any,
           title: data.title,
           message: data.message,
           link: data.link || null,

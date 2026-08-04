@@ -1,16 +1,15 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { getTestDb, cleanupTestDb, closeTestDb, createTestUser, createTestCourse } from "../setup";
-import type { PrismaClient } from "../../generated/prisma/client";
+import { getTestDb, createTestUser, createTestCourse } from "../setup";
+import { PrismaClient } from "../../generated/prisma/client";
 
 let prisma: PrismaClient;
 
 beforeAll(async () => {
   prisma = getTestDb();
-  await cleanupTestDb();
 });
 
 afterAll(async () => {
-  await closeTestDb();
+  await prisma.$disconnect();
 });
 
 describe("Courses API", () => {

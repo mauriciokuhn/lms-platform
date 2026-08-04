@@ -33,7 +33,7 @@ export const authConfig = {
     jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
-        token.role = user.role;
+        token.role = (user as any).role;
       }
       return token;
     },

@@ -1,6 +1,7 @@
 "use client";
 
-import { useCallback, useEffect, useState, use, useRef } from "react";
+import { useEffect, useState, use, useRef } from "react";
+import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { showSuccess, showError } from "@/components/ui/toast-utils";
 
@@ -26,6 +27,7 @@ interface Course {
 
 export default function InstructorEditCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
+  const router = useRouter();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
   const [submitting, setSubmitting] = useState(false);
@@ -38,7 +40,7 @@ export default function InstructorEditCoursePage({ params }: { params: Promise<{
   const [editDescription, setEditDescription] = useState("");
   const [editCategory, setEditCategory] = useState("");
 
-  const loadCourse = useCallback(async () => {
+  async function loadCourse() {
     try {
       const res = await fetch(`/api/courses/${id}`);
       if (res.ok) {
@@ -49,13 +51,9 @@ export default function InstructorEditCoursePage({ params }: { params: Promise<{
         setEditCategory(data.category || "");
       }
     } catch {} finally { setLoading(false); }
-  }, [id]);
+  }
 
-  useEffect(() => {
-    (async () => {
-      await loadCourse();
-    })();
-  }, [loadCourse]);
+  useEffect(() => { loadCourse(); }, [id]);
 
   async function handleSaveInfo() {
     try {
@@ -301,7 +299,6 @@ export default function InstructorEditCoursePage({ params }: { params: Promise<{
         <h2 className="mb-3 text-lg font-semibold text-zinc-900 dark:text-white">Thumbnail do Curso</h2>
         <div className="flex items-start gap-4">
           {course.thumbnailUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- course thumbnail
             <img
               src={course.thumbnailUrl}
               alt="Thumbnail"
@@ -310,7 +307,6 @@ export default function InstructorEditCoursePage({ params }: { params: Promise<{
             />
           )}
           {thumbnailPreview && !course.thumbnailUrl && (
-            // eslint-disable-next-line @next/next/no-img-element -- local thumbnail preview
             <img
               src={thumbnailPreview}
               alt="Preview"

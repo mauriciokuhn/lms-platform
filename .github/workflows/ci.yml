@@ -7,15 +7,9 @@ on:
     branches: [main]
 
 env:
-  # The Prisma schema hardcodes `url = "file:./dev.db"` (SQLite) and the
-  # vitest suite bootstraps its own isolated SQLite databases, so no
-  # DATABASE_URL is needed here.
-  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  DATABASE_URL: "postgresql://postgres:postgres@localhost:5432/lms_test"
+  NEXTAUTH_SECRET: "test-secret-for-ci"
   NEXTAUTH_URL: "http://localhost:3000"
-  # Google OAuth is only exercised at runtime (e2e uses credentials login),
-  # but the auth config reads these env vars at build time.
-  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
-  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
 
 jobs:
   lint:
@@ -24,64 +18,93 @@ jobs:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: "npm"
       - run: npm ci
       - run: npm run lint
 
   typecheck:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: "npm"
       - run: npm ci
       - run: npx prisma generate
       - run: npx prisma db push
-      - run: npx tsc --noEmit
       - run: npm run build
 
   test:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: "npm"
       - run: npm ci
       - run: npx prisma generate
+      - run: npx prisma db push
       - run: npm test
-      - name: Upload vitest report
-        if: always()
-        uses: actions/upload-artifact@v4
-        with:
-          name: vitest-report
-          # coverage/ exists only if the vitest config enables coverage;
-          # the ignore flag makes the upload a no-op otherwise.
-          path: |
-            coverage/
-          if-no-files-found: ignore
-          retention-days: 7
 
   e2e:
     runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lms_test
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4
         with:
-          node-version: 22
+          node-version: 20
           cache: "npm"
       - run: npm ci
       - run: npx playwright install --with-deps chromium
       - run: npx prisma generate
       - run: npx prisma db push
       - run: npx prisma db seed
-      # Serve the production bundle so on-demand Turbopack compilation (the
-      # source of /admin connection-refused flapping) never happens in CI.
-      - run: E2E_PRODUCTION=1 npx playwright test --config src/tests/e2e/playwright.config.ts
+      - run: npx playwright test --config src/tests/e2e/playwright.config.ts
       - uses: actions/upload-artifact@v4
         if: failure()
         with:

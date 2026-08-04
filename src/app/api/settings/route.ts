@@ -100,9 +100,9 @@ export async function PATCH(request: Request) {
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        ...data as unknown as Partial<UserSettingsData>,
+        ...data as any,
       },
-      update: data as unknown as Partial<UserSettingsData>,
+      update: data as any,
     });
 
     return NextResponse.json({

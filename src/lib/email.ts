@@ -10,7 +10,6 @@
  */
 
 import { Resend } from "resend";
-import { logger } from "@/lib/logger";
 
 // ─── Lazy Resend client ──────────────────
 
@@ -34,7 +33,11 @@ interface SendEmailParams {
 async function sendEmail({ to, subject, html }: SendEmailParams) {
   const resend = getResendClient();
   if (!resend) {
-    logger.warn("Email disabled — RESEND_API_KEY not configured", { to });
+    console.log("========================================");
+    console.log(`📧 [EMAIL DISABLED] Would send to: ${to}`);
+    console.log(`   Subject: ${subject}`);
+    console.log("   Set RESEND_API_KEY env var to enable.");
+    console.log("========================================");
     return { success: false, reason: "RESEND_API_KEY not configured" };
   }
 
@@ -47,14 +50,14 @@ async function sendEmail({ to, subject, html }: SendEmailParams) {
     });
 
     if (result.error) {
-      logger.error("Resend error", { error: result.error });
+      console.error("❌ Resend error:", result.error);
       return { success: false, error: result.error };
     }
 
-    logger.info("Email sent", { to, subject });
+    console.log(`✅ Email sent to ${to}: ${subject}`);
     return { success: true, id: result.data?.id };
   } catch (error) {
-    logger.error("Failed to send email", { error: error instanceof Error ? error.message : String(error) });
+    console.error("❌ Failed to send email:", error);
     return { success: false, error };
   }
 }

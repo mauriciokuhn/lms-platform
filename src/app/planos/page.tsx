@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, signIn } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -122,7 +122,7 @@ export default function PlanosPage() {
 
       if (data.url) {
         // Redirect to Stripe Checkout
-        window.location.assign(data.url);
+        window.location.href = data.url;
       } else if (data.enrolled) {
         showSuccess("Matrícula realizada com sucesso!");
       } else {

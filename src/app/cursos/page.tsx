@@ -207,17 +207,10 @@ function CoursesContent() {
       }
     });
 
-  // Reset pagination when filters change (adjust state during render to avoid cascading effects)
-  const filterKey = `${search}|${categoryFilter}|${sortBy}|${ratingFilter}|${priceFilter}`;
-  const [prevFilterKey, setPrevFilterKey] = useState(filterKey);
-  if (prevFilterKey !== filterKey) {
-    setPrevFilterKey(filterKey);
-    setVisibleCount(ITEMS_PER_PAGE);
-  }
-
-  // Smooth scroll to results when filters change
+  // Reset pagination + smooth scroll to results when filters change
   useEffect(() => {
-    mainRef.current?.scrollIntoView({ behavior: "smooth" });
+    setVisibleCount(ITEMS_PER_PAGE);
+    mainRef.current?.scrollIntoView({ behavior: 'smooth' });
   }, [search, categoryFilter, sortBy, ratingFilter, priceFilter]);
 
   // IntersectionObserver for infinite scroll
@@ -528,11 +521,7 @@ function CoursesContent() {
         ) : (
           /* ─── GRID VIEW ─── */
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredCourses.slice(0, visibleCount).map((course, idx) => {
-              // Hoisted so TS narrowing survives inside the onClick/onKeyDown
-              // closures (and avoids repeating course.instructor access).
-              const instructor = course.instructor;
-              return (
+            {filteredCourses.slice(0, visibleCount).map((course, idx) => (
               <Link
                 key={course.id}
                 href={`/cursos/${course.id}`}
@@ -553,31 +542,16 @@ function CoursesContent() {
                   {course.title}
                 </h3>
                 <p className="mt-1 line-clamp-2 text-sm text-zinc-500 dark:text-zinc-400">{course.description}</p>
-                {instructor && (
+                {course.instructor && (
                   <p className="mt-2 text-xs text-zinc-400">
                     Por{" "}
-                    {/* Nested <a> inside the card <a> is invalid HTML and
-                        triggers a hydration error — navigate via router and
-                        stop propagation instead of nesting anchors. */}
-                    <span
-                      role="link"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        router.push(`/instrutores/${instructor.id}`);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          router.push(`/instrutores/${instructor.id}`);
-                        }
-                      }}
-                      className="cursor-pointer font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                    <Link
+                      href={`/instrutores/${course.instructor.id}`}
+                      className="font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+                      onClick={(e) => e.stopPropagation()}
                     >
-                      {instructor.name}
-                    </span>
+                      {course.instructor.name}
+                    </Link>
                   </p>
                 )}
                 <div className="mt-2 flex items-center gap-3 text-xs text-zinc-400">
@@ -591,8 +565,7 @@ function CoursesContent() {
                   </div>
                 )}
               </Link>
-              );
-            })}
+            ))}
           </div>
         )}
 

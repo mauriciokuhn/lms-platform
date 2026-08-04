@@ -13,7 +13,7 @@
 const memoryStore = new Map<string, { value: unknown; expiresAt: number }>();
 
 // ─── Redis client (lazy init) ──────────────
-let redisClient: import("@upstash/redis").Redis | null = null;
+let redisClient: any = null;
 
 async function getRedis() {
   if (redisClient) return redisClient;

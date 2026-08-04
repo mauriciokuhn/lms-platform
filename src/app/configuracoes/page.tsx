@@ -5,7 +5,6 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { useUserSettings } from "@/lib/hooks/use-user-settings";
-import type { UserSettingsData } from "@/app/api/settings/route";
 import { useNotificationAlert } from "@/components/ui/notification-bell";
 import { GamificationWidget } from "@/components/ui/gamification-display";
 import { LogoutButton } from "@/components/logout-button";
@@ -34,7 +33,7 @@ export default function SettingsPage() {
 
   const handleToggle = async (field: string, value: boolean) => {
     setSaving(field);
-    const ok = await updateSettings({ [field]: value } as Partial<UserSettingsData>);
+    const ok = await updateSettings({ [field]: value } as any);
     if (ok) toast.success("Configuração atualizada!");
     else toast.error("Erro ao salvar");
     setSaving(null);
@@ -53,7 +52,7 @@ export default function SettingsPage() {
 
   const handleTimeChange = async (field: "dndStartTime" | "dndEndTime", value: string) => {
     setSaving(field);
-    const ok = await updateSettings({ [field]: value || null } as Partial<UserSettingsData>);
+    const ok = await updateSettings({ [field]: value || null } as any);
     if (ok) toast.success("Horário atualizado!");
     else toast.error("Erro ao salvar");
     setSaving(null);

@@ -23,13 +23,6 @@ export default function LoginPage() {
       redirect: false,
     });
 
-    // Rate-limited (429): the wrapper returns { error } with X-RateLimit-*.
-    if (result?.status === 429 || (result?.error ?? "").includes("Muitas requisições")) {
-      setError("Muitas tentativas de login. Aguarde um minuto e tente novamente.");
-      setLoading(false);
-      return;
-    }
-
     if (result?.error) {
       setError("Email ou senha inválidos.");
       setLoading(false);

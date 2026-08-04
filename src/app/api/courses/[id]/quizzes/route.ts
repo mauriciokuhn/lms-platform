@@ -36,11 +36,7 @@ export async function POST(
 
     const { id: courseId } = await params;
     const body = await request.json();
-    const { title, description, passingScore, maxAttempts } = body;
-    const questions = (body.questions ?? []) as {
-      text: string;
-      options: { text: string; isCorrect?: boolean }[];
-    }[];
+    const { title, description, passingScore, maxAttempts, questions } = body;
 
     if (!title) {
       return NextResponse.json({ error: "Título é obrigatório" }, { status: 400 });
@@ -53,13 +49,13 @@ export async function POST(
         passingScore: passingScore || 70,
         maxAttempts: maxAttempts || 3,
         courseId,
-        ...(questions.length > 0 && {
+        ...(questions && {
           questions: {
-            create: questions.map((q, qi) => ({
+            create: questions.map((q: any, qi: number) => ({
               text: q.text,
               orderIndex: qi + 1,
               options: {
-                create: q.options.map((o) => ({
+                create: q.options.map((o: any, oi: number) => ({
                   text: o.text,
                   isCorrect: o.isCorrect || false,
                 })),

@@ -43,6 +43,13 @@ export async function GET() {
     // If current user not in top 20, get their position
     let userRank = currentUserRank;
     if (currentUserRank === 0) {
+      const count = await db.userXP.count({
+        where: {
+          xp: { gt: 0 },
+          user: { role: "STUDENT" },
+        },
+      });
+
       const currentUserXP = await db.userXP.findUnique({
         where: { userId: session.user.id },
       });

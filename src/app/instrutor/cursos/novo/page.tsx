@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import Link from "next/link";  import { showSuccess } from "@/components/ui/toast-utils";
+import Link from "next/link";
+import { showSuccess, showError } from "@/components/ui/toast-utils";
 
 export default function InstructorNewCoursePage() {
   const router = useRouter();

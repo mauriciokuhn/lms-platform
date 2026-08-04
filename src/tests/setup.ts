@@ -7,12 +7,8 @@
  */
 
 import { PrismaClient } from "../generated/prisma/client";
-import type { Prisma } from "../generated/prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
-import { execSync } from "child_process";
-import fs from "fs";
-import path from "path";
 
 // ──────────────────────────────────────────
 // Isolated Database per Test File
@@ -20,55 +16,15 @@ import path from "path";
 // Uses a unique database URL per test file to allow parallel execution
 
 let prisma: PrismaClient | null = null;
-let activeTestDbFile: string | null = null;
-
-/**
- * Pushes the Prisma schema into the isolated test database.
- *
- * The isolated SQLite file starts empty, so without this step every query
- * fails with "table does not exist". The main schema hardcodes
- * `url = "file:./dev.db"` (an env override is ignored), so we write a
- * temporary schema next to it with the URL swapped to the test DB. Because
- * the temp schema lives in prisma/, the relative `file:./test-*.db` URL
- * resolves to the same directory the PrismaClient uses at runtime.
- */
-function bootstrapTestSchema(testDbUrl: string) {
-  const prismaDir = path.join(process.cwd(), "prisma");
-  const prismaCli = path.join(process.cwd(), "node_modules", "prisma", "build", "index.js");
-  const tempSchemaPath = path.join(
-    prismaDir,
-    `test-schema-${crypto.randomBytes(4).toString("hex")}.prisma`
-  );
-
-  const patched = fs
-    .readFileSync(path.join(prismaDir, "schema.prisma"), "utf8")
-    .replace(/url\s*=\s*"file:\.\/dev\.db"/, `url = "${testDbUrl}"`);
-  fs.writeFileSync(tempSchemaPath, patched);
-
-  try {
-    execSync(`node "${prismaCli}" db push --skip-generate --schema "${tempSchemaPath}"`, {
-      stdio: ["ignore", "ignore", "pipe"],
-      timeout: 60_000,
-    });
-  } catch (err) {
-    const stderr = (err as { stderr?: Buffer | string })?.stderr?.toString() || String(err);
-    throw new Error(`Falha ao criar schema de teste: ${stderr}`);
-  } finally {
-    fs.unlinkSync(tempSchemaPath);
-  }
-}
 
 export function getTestDb(): PrismaClient {
   if (!prisma) {
     const uniqueName = `test-${crypto.randomBytes(4).toString("hex")}.db`;
-    const testDbUrl = `file:./${uniqueName}`;
-    bootstrapTestSchema(testDbUrl);
     prisma = new PrismaClient({
       datasources: {
-        db: { url: testDbUrl },
+        db: { url: `file:./${uniqueName}` },
       },
     });
-    activeTestDbFile = path.join(process.cwd(), "prisma", uniqueName);
   }
   return prisma;
 }
@@ -103,23 +59,13 @@ export async function closeTestDb() {
     await prisma.$disconnect();
     prisma = null;
   }
-  // Delete the throwaway SQLite file so test runs don't accumulate
-  // dozens of test-*.db files in prisma/.
-  if (activeTestDbFile) {
-    try {
-      fs.rmSync(activeTestDbFile, { force: true });
-    } catch {
-      // Best-effort cleanup — ignore (e.g. file locked on Windows).
-    }
-    activeTestDbFile = null;
-  }
 }
 
 // ──────────────────────────────────────────
 // Test Helpers
 // ──────────────────────────────────────────
 
-export async function createTestUser(prisma: PrismaClient, overrides: Partial<Prisma.UserCreateInput> = {}) {
+export async function createTestUser(prisma: PrismaClient, overrides: Partial<any> = {}) {
   const passwordHash = await bcrypt.hash("test123", 10);
   return prisma.user.create({
     data: {
@@ -132,7 +78,7 @@ export async function createTestUser(prisma: PrismaClient, overrides: Partial<Pr
   });
 }
 
-export async function createTestCourse(prisma: PrismaClient, overrides: Partial<Prisma.CourseUncheckedCreateInput> = {}) {
+export async function createTestCourse(prisma: PrismaClient, overrides: Partial<any> = {}) {
   return prisma.course.create({
     data: {
       title: "Test Course",
@@ -144,7 +90,7 @@ export async function createTestCourse(prisma: PrismaClient, overrides: Partial<
   });
 }
 
-export async function createTestModule(prisma: PrismaClient, courseId: string, overrides: Partial<Prisma.ModuleUncheckedCreateInput> = {}) {
+export async function createTestModule(prisma: PrismaClient, courseId: string, overrides: Partial<any> = {}) {
   return prisma.module.create({
     data: {
       title: "Test Module",
@@ -155,7 +101,7 @@ export async function createTestModule(prisma: PrismaClient, courseId: string, o
   });
 }
 
-export async function createTestLesson(prisma: PrismaClient, moduleId: string, overrides: Partial<Prisma.LessonUncheckedCreateInput> = {}) {
+export async function createTestLesson(prisma: PrismaClient, moduleId: string, overrides: Partial<any> = {}) {
   return prisma.lesson.create({
     data: {
       title: "Test Lesson",
@@ -173,7 +119,7 @@ export async function createTestLesson(prisma: PrismaClient, moduleId: string, o
 // Mock NextAuth Session
 // ──────────────────────────────────────────
 
-export function createMockSession(overrides: Partial<Record<string, unknown>> = {}) {
+export function createMockSession(overrides: Partial<any> = {}) {
   return {
     user: {
       id: "test-user-id",

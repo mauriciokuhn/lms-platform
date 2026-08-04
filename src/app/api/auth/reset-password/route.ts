@@ -2,7 +2,6 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { strictLimiter } from "@/lib/rate-limit";
-import { logger } from "@/lib/logger";
 
 /**
  * POST /api/auth/reset-password
@@ -15,7 +14,7 @@ export async function POST(request: Request) {
     // Rate limit: 5 requests per minute
     const rateCheck = strictLimiter.check(request);
     if (!rateCheck.allowed) {
-      return NextResponse.json({ error: rateCheck.error }, { status: 429, headers: rateCheck.headers });
+      return NextResponse.json({ error: rateCheck.error }, { status: 429 });
     }
 
     const body = await request.json();
@@ -86,14 +85,14 @@ export async function POST(request: Request) {
     // Log the user out by deleting all their sessions (forces re-login)
     await db.session.deleteMany({ where: { userId: user.id } });
 
-    logger.info("Password reset successful", { userId: user.id });
+    console.log(`✅ Password reset successful for user ${user.email}`);
 
     return NextResponse.json({
       success: true,
       message: "Senha redefinida com sucesso! Faça login com sua nova senha.",
     });
   } catch (error) {
-    logger.error("POST /api/auth/reset-password error", { error: error instanceof Error ? error.message : String(error) });
+    console.error("POST /api/auth/reset-password error:", error);
     return NextResponse.json(
       { error: "Erro ao redefinir senha" },
       { status: 500 }

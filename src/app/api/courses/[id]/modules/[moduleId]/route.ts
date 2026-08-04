@@ -16,7 +16,7 @@ export async function PUT(
     const body = await request.json();
     const { title, description, orderIndex } = body;
 
-    const updatedModule = await db.module.update({
+    const module = await db.module.update({
       where: { id: moduleId },
       data: {
         ...(title !== undefined && { title }),
@@ -25,7 +25,7 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(updatedModule);
+    return NextResponse.json(module);
   } catch (error) {
     console.error("PUT /api/courses/[id]/modules/[moduleId] error:", error);
     return NextResponse.json({ error: "Erro ao atualizar módulo" }, { status: 500 });

@@ -19,16 +19,6 @@ interface AnalyticsData {
 const COLORS = ["#18181b", "#3b82f6", "#22c55e", "#f59e0b", "#ef4444", "#8b5cf6", "#06b6d4", "#f97316"];
 const DAYS = ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"];
 
-function MetricCard({ title, value, subtitle }: { title: string; value: string; subtitle: string }) {
-  return (
-    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
-      <p className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{title}</p>
-      <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{value}</p>
-      <p className="mt-0.5 text-xs text-zinc-400">{subtitle}</p>
-    </div>
-  );
-}
-
 export default function AnalyticsPage() {
   const [data, setData] = useState<AnalyticsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -74,6 +64,14 @@ export default function AnalyticsPage() {
   if (!data) {
     return <div className="p-8 text-zinc-500 dark:text-zinc-400">Nenhum dado disponível ainda.</div>;
   }
+
+  const MetricCard = ({ title, value, subtitle }: { title: string; value: string; subtitle: string }) => (
+    <div className="rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-5 shadow-sm">
+      <p className="text-xs font-medium uppercase tracking-wider text-zinc-500 dark:text-zinc-400">{title}</p>
+      <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{value}</p>
+      <p className="mt-0.5 text-xs text-zinc-400">{subtitle}</p>
+    </div>
+  );
 
   const totalEnrollments = data.monthlyEnrollments.reduce((a, b) => a + b.enrollments, 0);
   const avgCompletion = data.completionByCourse.length > 0

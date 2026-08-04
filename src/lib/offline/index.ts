@@ -9,6 +9,7 @@
 
 const DB_NAME = "lms-offline";
 const DB_VERSION = 1;
+const STORES = ["progress", "mutationQueue", "cachedCourses"] as const;
 
 // ──────────────────────────────────────────
 // Database initialization
@@ -57,7 +58,7 @@ function openDB(): Promise<IDBDatabase> {
 // Generic CRUD helpers
 // ──────────────────────────────────────────
 
-async function put<T>(storeName: string, data: T): Promise<void> {
+async function put(storeName: string, data: any): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -67,7 +68,7 @@ async function put<T>(storeName: string, data: T): Promise<void> {
   });
 }
 
-async function getAll<T>(storeName: string): Promise<T[]> {
+async function getAll(storeName: string): Promise<any[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
@@ -77,11 +78,11 @@ async function getAll<T>(storeName: string): Promise<T[]> {
   });
 }
 
-async function getByIndex<T>(
+async function getByIndex(
   storeName: string,
   indexName: string,
   value: string
-): Promise<T[]> {
+): Promise<any[]> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readonly");
@@ -123,15 +124,15 @@ export async function saveProgressOffline(progress: OfflineProgress) {
 export async function getOfflineProgress(
   userId: string
 ): Promise<OfflineProgress[]> {
-  return getByIndex<OfflineProgress>("progress", "userId", userId);
+  return getByIndex("progress", "userId", userId);
 }
 
 export async function getUnsyncedProgress(): Promise<OfflineProgress[]> {
-  return getByIndex<OfflineProgress>("progress", "synced", "false");
+  return getByIndex("progress", "synced", "false");
 }
 
 export async function markProgressSynced(lessonId: string) {
-  const items = await getAll<OfflineProgress>("progress");
+  const items = await getAll("progress");
   const item = items.find((p) => p.lessonId === lessonId);
   if (item) {
     await put("progress", { ...item, synced: true });
@@ -145,13 +146,13 @@ export async function markProgressSynced(lessonId: string) {
 interface QueuedMutation {
   id?: number;
   type: "ENROLL" | "COMPLETE_LESSON" | "SUBMIT_QUIZ" | "REVIEW";
-  payload: unknown;
+  payload: any;
   createdAt: string;
 }
 
 export async function enqueueMutation(
   type: QueuedMutation["type"],
-  payload: unknown
+  payload: any
 ) {
   await put("mutationQueue", {
     type,
@@ -162,7 +163,7 @@ export async function enqueueMutation(
 }
 
 export async function getPendingMutations(): Promise<QueuedMutation[]> {
-  return getAll<QueuedMutation>("mutationQueue");
+  return getAll("mutationQueue");
 }
 
 export async function dequeueMutation(id: number) {
@@ -178,7 +179,7 @@ export interface CachedCourse {
   title: string;
   description: string;
   category: string | null;
-  modules: unknown[];
+  modules: any[];
   cachedAt: string;
 }
 
@@ -202,23 +203,18 @@ export async function getCachedCourse(
 }
 
 export async function getCachedCourses(): Promise<CachedCourse[]> {
-  return getAll<CachedCourse>("cachedCourses");
+  return getAll("cachedCourses");
 }
 
 // ──────────────────────────────────────────
 // Background Sync
 // ──────────────────────────────────────────
 
-interface SyncServiceWorkerRegistration extends ServiceWorkerRegistration {
-  sync: { register: (tag: string) => Promise<void> };
-}
-
 async function registerSync(tag: string) {
-  const sw = navigator.serviceWorker as unknown as { sync?: { register: (tag: string) => Promise<void> } };
-  if ("serviceWorker" in navigator && sw.sync) {
+  if ("serviceWorker" in navigator && "sync" in (navigator as any).serviceWorker) {
     try {
-      const registration = (await navigator.serviceWorker.ready) as SyncServiceWorkerRegistration;
-      await registration.sync.register(tag);
+      const registration = await navigator.serviceWorker.ready;
+      await (registration as any).sync.register(tag);
       console.log(`✅ Background Sync registered: ${tag}`);
     } catch (err) {
       console.log("⚠️ Background Sync not available:", err);

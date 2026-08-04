@@ -14,8 +14,7 @@ export async function POST(
 
     const { quizId } = await params;
     const body = await request.json();
-    const { text, orderIndex } = body;
-    const options = body.options as { text: string; isCorrect?: boolean }[];
+    const { text, options, orderIndex } = body;
 
     if (!text || !options || !Array.isArray(options) || options.length < 2) {
       return NextResponse.json({ error: "Pergunta deve ter texto e pelo menos 2 opções" }, { status: 400 });
@@ -38,7 +37,7 @@ export async function POST(
         orderIndex: nextIndex,
         quizId,
         options: {
-          create: options.map((opt) => ({
+          create: options.map((opt: any, oi: number) => ({
             text: opt.text,
             isCorrect: opt.isCorrect || false,
           })),

@@ -1,5 +1,4 @@
 import { NextResponse } from "next/server";
-import { logger } from "@/lib/logger";
 
 /**
  * Stripe Webhook Handler
@@ -32,18 +31,14 @@ export async function POST(request: Request) {
         process.env.STRIPE_WEBHOOK_SECRET
       );
     } catch (err) {
-      logger.error("Webhook signature verification failed", { error: err instanceof Error ? err.message : String(err) });
+      console.error("Webhook signature verification failed:", err);
       return NextResponse.json(
         { error: "Invalid signature" },
         { status: 400 }
       );
     }
 
-    const checkoutSession = event.data.object as {
-      metadata?: Record<string, string> | null;
-      subscription?: string | null;
-      customer?: string | null;
-    };
+    const checkoutSession = event.data.object as any;
     const { userId, courseId, planId } = checkoutSession.metadata || {};
 
     if (event.type === "checkout.session.completed") {
@@ -85,7 +80,7 @@ export async function POST(request: Request) {
             },
           });
 
-          logger.info("Plan upgraded", { userId, plan });
+          console.log(`✅ Plan upgraded to ${plan} for user ${userId}`);
         }
       }
 
@@ -104,13 +99,13 @@ export async function POST(request: Request) {
             enrolledAt: new Date(),
           },
         });
-        logger.info("Enrollment created via webhook", { userId, courseId });
+        console.log(`✅ Enrollment created for user ${userId} in course ${courseId}`);
       }
     }
 
     // Handle subscription updates
     if (event.type === "customer.subscription.updated" || event.type === "customer.subscription.deleted") {
-      const subscription = event.data.object as { id: string; status?: string };
+      const subscription = event.data.object as any;
       const { db } = await import("@/lib/db");
 
       const status = event.type === "customer.subscription.deleted" ? "canceled" :
@@ -132,14 +127,14 @@ export async function POST(request: Request) {
             where: { id: sub.userId },
             data: { plan: "FREE" },
           });
-          logger.info("Plan reverted to FREE", { userId: sub.userId });
+          console.log(`✅ Plan reverted to FREE for user ${sub.userId}`);
         }
       }
     }
 
     return NextResponse.json({ received: true });
   } catch (error) {
-    logger.error("POST /api/checkout/webhook error", { error: error instanceof Error ? error.message : String(error) });
+    console.error("POST /api/checkout/webhook error:", error);
     return NextResponse.json(
       { error: "Erro ao processar webhook" },
       { status: 500 }

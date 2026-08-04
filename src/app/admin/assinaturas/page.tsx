@@ -49,6 +49,8 @@ interface SubscriptionsData {
   recentSubscriptions: RecentSubscription[];
 }
 
+const COLORS = ["#18181b", "#f59e0b", "#8b5cf6"];
+
 export default function AdminSubscriptionsPage() {
   const [data, setData] = useState<SubscriptionsData | null>(null);
   const [loading, setLoading] = useState(true);
@@ -176,7 +178,8 @@ export default function AdminSubscriptionsPage() {
             <LineChart data={data.monthlyRevenue}>
               <CartesianGrid strokeDasharray="3 3" stroke="#e4e4e7" />
               <XAxis dataKey="month" tick={{ fontSize: 10 }} stroke="#a1a1aa" />
-              <YAxis tick={{ fontSize: 11 }} stroke="#a1a1aa" />                <Tooltip formatter={(value) => [`R$ ${Number(value).toFixed(2)}`, "Receita"]} />
+              <YAxis tick={{ fontSize: 11 }} stroke="#a1a1aa" />
+              <Tooltip formatter={(value: any) => [`R$ ${Number(value).toFixed(2)}`, "Receita"]} />
               <Line type="monotone" dataKey="revenue" stroke="#18181b" strokeWidth={2} dot={{ r: 3 }} name="Receita" />
             </LineChart>
           </ResponsiveContainer>

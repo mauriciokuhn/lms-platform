@@ -24,8 +24,6 @@ interface RateLimitResult {
   remaining: number;
   resetIn: number; // milliseconds until reset
   error?: string;
-  /** Standard X-RateLimit-* headers to attach to the HTTP response. */
-  headers: Record<string, string>;
 }
 
 // ─── Cleanup ──────────────────────────────
@@ -48,14 +46,6 @@ function globalCleanup() {
 }
 
 // ─── Factory ──────────────────────────────
-
-function buildHeaders(maxRequests: number, remaining: number, resetInMs: number): Record<string, string> {
-  return {
-    "X-RateLimit-Limit": String(maxRequests),
-    "X-RateLimit-Remaining": String(Math.max(0, remaining)),
-    "X-RateLimit-Reset": String(Math.max(0, Math.ceil(resetInMs / 1000))),
-  };
-}
 
 export function rateLimit(config: RateLimitConfig) {
   const { maxRequests, windowMs } = config;
@@ -80,12 +70,7 @@ export function rateLimit(config: RateLimitConfig) {
       if (!entry || entry.resetAt < now) {
         // First request or window expired
         store.set(ip, { count: 1, resetAt: now + windowMs });
-        return {
-          allowed: true,
-          remaining: maxRequests - 1,
-          resetIn: windowMs,
-          headers: buildHeaders(maxRequests, maxRequests - 1, windowMs),
-        };
+        return { allowed: true, remaining: maxRequests - 1, resetIn: windowMs };
       }
 
       entry.count++;
@@ -97,16 +82,10 @@ export function rateLimit(config: RateLimitConfig) {
           remaining: 0,
           resetIn,
           error: `Muitas requisições. Tente novamente em ${Math.ceil(resetIn / 1000)} segundos.`,
-          headers: buildHeaders(maxRequests, 0, resetIn),
         };
       }
 
-      return {
-        allowed: true,
-        remaining: maxRequests - entry.count,
-        resetIn: entry.resetAt - now,
-        headers: buildHeaders(maxRequests, maxRequests - entry.count, entry.resetAt - now),
-      };
+      return { allowed: true, remaining: maxRequests - entry.count, resetIn: entry.resetAt - now };
     },
 
     /** Clear all rate limit entries (useful for testing) */

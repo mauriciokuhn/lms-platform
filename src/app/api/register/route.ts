@@ -2,14 +2,13 @@ import { db } from "@/lib/db";
 import bcrypt from "bcryptjs";
 import { NextResponse } from "next/server";
 import { strictLimiter } from "@/lib/rate-limit";
-import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
     // Rate limit: 5 registrations per minute
     const rateCheck = strictLimiter.check(request);
     if (!rateCheck.allowed) {
-      return NextResponse.json({ error: rateCheck.error }, { status: 429, headers: rateCheck.headers });
+      return NextResponse.json({ error: rateCheck.error }, { status: 429 });
     }
 
     const { name, email, password } = await request.json();
@@ -63,7 +62,7 @@ export async function POST(request: Request) {
       { status: 201 }
     );
   } catch (error) {
-    logger.error("Registration error", { error: error instanceof Error ? error.message : String(error) });
+    console.error("Registration error:", error);
     return NextResponse.json(
       { error: "Erro interno do servidor." },
       { status: 500 }

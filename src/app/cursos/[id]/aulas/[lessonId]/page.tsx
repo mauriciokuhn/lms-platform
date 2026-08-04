@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState, use } from "react";
+import { useEffect, useState, use, useCallback } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
@@ -92,9 +92,7 @@ export default function LessonPage({
   }, [courseId, lessonId, router]);
 
   useEffect(() => {
-    (async () => {
-      await loadData();
-    })();
+    loadData();
   }, [loadData]);
 
   // Track progress every 30 seconds while watching
@@ -120,7 +118,7 @@ export default function LessonPage({
     }, 30000);
 
     return () => clearInterval(interval);
-  }, [currentLesson, session, lessonId, progress.completed, progress.watchedSeconds]);
+  }, [currentLesson, session, lessonId, progress.completed]);
 
   async function handleMarkComplete() {
     if (!session?.user) {
@@ -189,7 +187,7 @@ export default function LessonPage({
     return `${s}s`;
   };
 
-  const renderSidebar = (onNavigate?: () => void) => {
+  const renderSidebar = useCallback((onNavigate?: () => void) => {
     return (
       <>
         <div className="border-b border-zinc-800 p-4">
@@ -242,11 +240,11 @@ export default function LessonPage({
                 })}
               </ul>
             </div>
-          )          )}
+          ))}
         </nav>
       </>
     );
-  };
+  }, [course, courseId, lessonId]);
 
   return (
     <div className="flex min-h-screen bg-zinc-950">
@@ -325,7 +323,7 @@ export default function LessonPage({
               <PlayerWrapper
                 url={currentLesson.contentUrl}
                 initialSeconds={progress.watchedSeconds || 0}
-                onProgress={() => {
+                onProgress={(watchedSeconds) => {
                   // Progress is saved automatically by the 30-second interval
                 }}
                 onComplete={() => {
