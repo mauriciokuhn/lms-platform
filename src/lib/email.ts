@@ -22,8 +22,11 @@ function getResendClient() {
 
 // ─── Email Sender ────────────────────────
 
-// Use EMAIL_FROM env var, fallback to Resend's default sandbox sender
-const FROM_EMAIL = process.env.EMAIL_FROM || "onboarding@resend.dev";
+// Use EMAIL_FROM env var, fallback to Resend's default sandbox sender.
+// Read lazily so tests can set the env before each call.
+function getFromEmail() {
+  return process.env.EMAIL_FROM || "onboarding@resend.dev";
+}
 
 interface SendEmailParams {
   to: string;
@@ -40,7 +43,7 @@ async function sendEmail({ to, subject, html }: SendEmailParams) {
 
   try {
     const result = await resend.emails.send({
-      from: FROM_EMAIL,
+      from: getFromEmail(),
       to,
       subject,
       html,

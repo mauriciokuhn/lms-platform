@@ -12,9 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
-    // Generated e2e artifacts — minified bundles, never linted:
+    // Generated artifacts — minified bundles, never linted:
     "playwright-report/**",
     "test-results/**",
+    "coverage/**",
   ]),
   // Standalone CJS tooling scripts (run with plain node) legitimately use
   // require() — don't gate them on the ESM-only import rule. k6 load-test
