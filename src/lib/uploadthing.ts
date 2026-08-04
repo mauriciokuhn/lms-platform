@@ -1,5 +1,6 @@
 import { createUploadthing, type FileRouter } from "uploadthing/next";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 const f = createUploadthing();
 
@@ -13,7 +14,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("✅ Thumbnail uploaded:", file.url);
+      logger.info("Thumbnail uploaded", { userId: metadata.userId, url: file.url });
       return { uploadedBy: metadata.userId, url: file.url };
     }),
 
@@ -28,7 +29,7 @@ export const ourFileRouter = {
       return { userId: session.user.id };
     })
     .onUploadComplete(async ({ metadata, file }) => {
-      console.log("✅ Material uploaded:", file.url);
+      logger.info("Material uploaded", { userId: metadata.userId, url: file.url });
       return { uploadedBy: metadata.userId, url: file.url };
     }),
 } satisfies FileRouter;

@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -33,7 +34,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {
-    console.error("POST /api/instructor/courses error:", error);
+    logger.error("POST /api/instructor/courses error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao criar curso" }, { status: 500 });
   }
 }
@@ -69,7 +70,7 @@ export async function GET() {
 
     return NextResponse.json(formatted);
   } catch (error) {
-    console.error("GET /api/instructor/courses error:", error);
+    logger.error("GET /api/instructor/courses error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar cursos" }, { status: 500 });
   }
 }

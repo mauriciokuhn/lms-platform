@@ -49,14 +49,6 @@ export const options = {
 };
 
 // ──────────────────────────────────────────
-// Helper: Random item from array
-// ──────────────────────────────────────────
-
-function randomItem(arr) {
-  return arr[Math.floor(Math.random() * arr.length)];
-}
-
-// ──────────────────────────────────────────
 // Test: GET /api/courses
 // ──────────────────────────────────────────
 

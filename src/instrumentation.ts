@@ -7,6 +7,8 @@
  * https://docs.sentry.io/platforms/javascript/guides/nextjs/
  */
 
+import { logger } from "@/lib/logger";
+
 export async function register() {
   // Only initialize in production
   if (process.env.NEXT_PUBLIC_SENTRY_DSN && process.env.NODE_ENV === "production") {
@@ -35,9 +37,9 @@ export async function register() {
         },
       });
 
-      console.log("✅ Sentry initialized");
+      logger.info("Sentry initialized");
     } catch (error) {
-      console.warn("⚠️ Sentry initialization failed:", error);
+      logger.warn("Sentry initialization failed", { error: error instanceof Error ? error.message : String(error) });
     }
   }
 }

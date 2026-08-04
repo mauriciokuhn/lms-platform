@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { uploadFile } from "@/lib/upload";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -34,7 +35,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(result, { status: 201 });
   } catch (error) {
-    console.error("POST /api/upload error:", error);
+    logger.error("POST /api/upload error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao fazer upload" }, { status: 500 });
   }
 }

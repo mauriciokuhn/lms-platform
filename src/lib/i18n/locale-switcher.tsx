@@ -1,25 +1,22 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useSyncExternalStore } from "react";
 import type { Locale } from "./translations";
 import { getFlag, getLabel } from "./translations";
+import { getStoredLocale } from "./use-translation";
+
+const emptySubscribe = () => () => {};
 
 export function LocaleSwitcher() {
-  const [locale, setLocale] = useState<Locale>("pt-BR");
-  const [mounted, setMounted] = useState(false);
-
-  useEffect(() => {
-    setMounted(true);
-    const stored = localStorage.getItem("locale") as Locale | null;
-    if (stored === "en" || stored === "pt-BR") {
-      setLocale(stored);
-    }
-  }, []);
+  const locale = useSyncExternalStore<Locale>(emptySubscribe, getStoredLocale, () => "pt-BR");
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
 
   function toggleLocale() {
     const next: Locale = locale === "pt-BR" ? "en" : "pt-BR";
-    setLocale(next);
     localStorage.setItem("locale", next);
+    // Keep a cookie in sync so server components (privacidade, termos)
+    // can read the locale too. SameSite=Lax keeps it sent on navigation.
+    document.cookie = `locale=${next};path=/;max-age=31536000;samesite=lax`;
     // Reload to apply translations throughout the app
     window.location.reload();
   }

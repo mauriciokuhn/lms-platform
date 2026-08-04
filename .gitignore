@@ -12,6 +12,10 @@
 
 # testing
 /coverage
+/test-results/
+/playwright-report/
+/prisma/test-*.db
+/prisma/test-*.prisma
 
 # next.js
 /.next/
@@ -32,6 +36,7 @@ yarn-error.log*
 
 # env files (can opt-in for committing if needed)
 .env*
+!.env.example
 
 # vercel
 .vercel
@@ -41,3 +46,7 @@ yarn-error.log*
 next-env.d.ts
 
 /src/generated/prisma
+
+# sqlite databases (dev + test artifacts)
+/dev.db
+/prisma/dev.db

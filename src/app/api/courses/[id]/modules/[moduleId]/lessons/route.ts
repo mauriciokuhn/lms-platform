@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -16,7 +17,7 @@ export async function GET(
 
     return NextResponse.json(lessons);
   } catch (error) {
-    console.error("GET /api/courses/[id]/modules/[moduleId]/lessons error:", error);
+    logger.error("GET /api/courses/[id]/modules/[moduleId]/lessons error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar aulas" }, { status: 500 });
   }
 }
@@ -64,7 +65,7 @@ export async function POST(
 
     return NextResponse.json(lesson, { status: 201 });
   } catch (error) {
-    console.error("POST /api/courses/[id]/modules/[moduleId]/lessons error:", error);
+    logger.error("POST /api/courses/[id]/modules/[moduleId]/lessons error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao criar aula" }, { status: 500 });
   }
 }

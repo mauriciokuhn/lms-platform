@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: Request,
@@ -87,7 +88,7 @@ export async function POST(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("POST /api/admin/courses/[id]/approve error:", error);
+    logger.error("POST /api/admin/courses/[id]/approve error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao processar aprovação" }, { status: 500 });
   }
 }

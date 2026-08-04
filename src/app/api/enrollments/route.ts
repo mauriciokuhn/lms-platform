@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -70,7 +71,7 @@ export async function GET() {
 
     return NextResponse.json(result);
   } catch (error) {
-    console.error("GET /api/enrollments error:", error);
+    logger.error("GET /api/enrollments error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar matrículas" }, { status: 500 });
   }
 }

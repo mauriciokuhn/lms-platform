@@ -41,13 +41,13 @@ const nextConfig: NextConfig = {
           },
         ],
       },
-      // Cache static assets for 1 year (fingerprinted by Next.js)
-      {
-        source: "/_next/static/:path*",
-        headers: [
-          { key: "Cache-Control", value: "public, max-age=31536000, immutable" },
-        ],
-      },
+      // NOTE: no custom Cache-Control for /_next/static/*. Next.js already
+      // emits `public, max-age=31536000, immutable` for fingerprinted
+      // assets in production builds. Overriding it (as this file did before)
+      // breaks the dev server: the browser treats dev chunks as immutable,
+      // serves stale JS and the Turbopack dev client reloads the page in an
+      // infinite loop (Next prints a warning about this).
+      //
       // Cache images and fonts for 1 month
       {
         source: "/:path*.(svg|png|jpg|jpeg|gif|webp|avif|ico|woff|woff2|ttf|eot)",

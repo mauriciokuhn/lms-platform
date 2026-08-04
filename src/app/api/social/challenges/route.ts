@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -81,7 +82,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("GET /api/social/challenges error:", error);
+    logger.error("GET /api/social/challenges error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar desafios" }, { status: 500 });
   }
 }
@@ -130,7 +131,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("POST /api/social/challenges error:", error);
+    logger.error("POST /api/social/challenges error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao entrar no desafio" }, { status: 500 });
   }
 }

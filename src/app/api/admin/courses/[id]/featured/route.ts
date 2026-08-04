@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _request: Request,
@@ -47,7 +48,7 @@ export async function POST(
       course: updated,
     });
   } catch (error) {
-    console.error("POST /api/admin/courses/[id]/featured error:", error);
+    logger.error("POST /api/admin/courses/[id]/featured error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao alternar destaque" }, { status: 500 });
   }
 }

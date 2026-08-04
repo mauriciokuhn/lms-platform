@@ -1,11 +1,12 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
     const session = await auth();
-    if (!session?.user || (session.user as any).role !== "ADMIN") {
+    if (!session?.user || session.user.role !== "ADMIN") {
       return NextResponse.json({ error: "Não autorizado" }, { status: 401 });
     }
 
@@ -98,7 +99,7 @@ export async function GET() {
       })),
     });
   } catch (error) {
-    console.error("GET /api/admin/subscriptions error:", error);
+    logger.error("GET /api/admin/subscriptions error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao carregar assinaturas" }, { status: 500 });
   }
 }

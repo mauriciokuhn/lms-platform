@@ -61,16 +61,14 @@ async function main() {
   // Generate favicon
   console.log("\nGenerating favicon...");
   const faviconDir = path.join(__dirname, "..", "public");
-  // Create multi-size ICO using the 32px PNG (browsers prefer this)
-  await sharp(svgBuffer)
-    .resize(32, 32)
-    .png()
-    .toFile(path.join(faviconDir, "favicon-32x32.png"));
-
-  await sharp(svgBuffer)
-    .resize(16, 16)
-    .png()
-    .toFile(path.join(faviconDir, "favicon-16x16.png"));
+  // Generate each favicon size listed in FAVICON_SIZES
+  for (const size of FAVICON_SIZES) {
+    await sharp(svgBuffer)
+      .resize(size, size)
+      .png()
+      .toFile(path.join(faviconDir, `favicon-${size}x${size}.png`));
+    console.log(`  ✅ favicon-${size}x${size}.png`);
+  }
 
   // Copy 32px as favicon.ico (most browsers accept PNG as favicon)
   fs.copyFileSync(

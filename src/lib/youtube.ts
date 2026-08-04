@@ -14,6 +14,7 @@
  */
 
 import { z } from "zod";
+import { logger } from "@/lib/logger";
 
 // ──────────────────────────────────────────
 // Types
@@ -136,7 +137,7 @@ export async function getVideoInfo(videoId: string): Promise<YouTubeVideoInfo | 
       embedUrl: getEmbedUrl(video.id),
     };
   } catch (error) {
-    console.error("YouTube API error:", error);
+    logger.error("YouTube API error", { error: error instanceof Error ? error.message : String(error) });
     return null;
   }
 }
@@ -166,7 +167,7 @@ export async function getVideosInfo(ids: string[]): Promise<YouTubeVideoInfo[]> 
       embedUrl: getEmbedUrl(video.id),
     }));
   } catch (error) {
-    console.error("YouTube API error:", error);
+    logger.error("YouTube API error", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }
@@ -213,7 +214,7 @@ export async function searchYouTube(query: string, maxResults = 10): Promise<You
       duration: 0, // Search results don't include duration; use getVideosInfo for that
     }));
   } catch (error) {
-    console.error("YouTube Search API error:", error);
+    logger.error("YouTube Search API error", { error: error instanceof Error ? error.message : String(error) });
     return [];
   }
 }

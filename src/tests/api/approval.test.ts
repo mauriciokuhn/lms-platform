@@ -1,12 +1,12 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
-import { getTestDb, cleanupTestDb, closeTestDb, createTestUser, createTestCourse, createTestModule, createTestLesson } from "../setup";
+import { getTestDb, cleanupTestDb, closeTestDb } from "../setup";
 import bcrypt from "bcryptjs";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient, User, Course } from "../../generated/prisma/client";
 
 let db: PrismaClient;
-let instructor: any;
-let admin: any;
-let course: any;
+let instructor: User;
+let admin: User;
+let course: Course;
 
 beforeAll(async () => {
   db = getTestDb();
@@ -179,7 +179,7 @@ describe("Approval Workflow", () => {
 });
 
 describe("Rejection Workflow", () => {
-  let rejectedCourse: any;
+  let rejectedCourse: Course;
   const rejectionReason = "O curso precisa de mais exemplos práticos e exercícios.";
 
   it("instructor should create another course and submit", async () => {
@@ -297,5 +297,6 @@ describe("Instructor Dashboard Metrics", () => {
     expect(total).toBeGreaterThanOrEqual(2);
     expect(approved).toBeGreaterThanOrEqual(1);
     expect(pending).toBeGreaterThanOrEqual(1);
+    expect(draft).toBeGreaterThanOrEqual(0);
   });
 });

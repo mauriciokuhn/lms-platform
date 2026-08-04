@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -27,7 +28,7 @@ export async function GET(
 
     return NextResponse.json(quiz);
   } catch (error) {
-    console.error("GET /api/courses/[id]/quizzes/[quizId] error:", error);
+    logger.error("GET /api/courses/[id]/quizzes/[quizId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar quiz" }, { status: 500 });
   }
 }
@@ -58,7 +59,7 @@ export async function PUT(
 
     return NextResponse.json(quiz);
   } catch (error) {
-    console.error("PUT /api/courses/[id]/quizzes/[quizId] error:", error);
+    logger.error("PUT /api/courses/[id]/quizzes/[quizId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar quiz" }, { status: 500 });
   }
 }
@@ -78,7 +79,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/courses/[id]/quizzes/[quizId] error:", error);
+    logger.error("DELETE /api/courses/[id]/quizzes/[quizId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao excluir quiz" }, { status: 500 });
   }
 }

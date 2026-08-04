@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(req: NextRequest) {
   try {
@@ -118,7 +119,7 @@ export async function GET(req: NextRequest) {
       dailyActiveUsers,
     });
   } catch (error) {
-    console.error("Analytics error:", error);
+    logger.error("Analytics error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao carregar analytics" }, { status: 500 });
   }
 }

@@ -1,4 +1,4 @@
-import { PrismaClient } from "../src/generated/prisma/client";
+import { PrismaClient, LessonContentType } from "../src/generated/prisma/client";
 import bcrypt from "bcryptjs";
 
 const prisma = new PrismaClient();
@@ -183,7 +183,7 @@ async function main() {
       for (let li = 0; li < md.lessons.length; li++) {
         const ls = md.lessons[li];
         await prisma.lesson.create({
-          data: { title: ls.title, contentType: ls.ct as any, contentUrl: ls.url || null, duration: ls.dur || null, orderIndex: li + 1, moduleId: mod.id },
+          data: { title: ls.title, contentType: ls.ct as LessonContentType, contentUrl: ls.url || null, duration: ls.dur || null, orderIndex: li + 1, moduleId: mod.id },
         });
       }
     }

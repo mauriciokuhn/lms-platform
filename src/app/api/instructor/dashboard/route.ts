@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -70,7 +71,7 @@ export async function GET() {
       courses: formattedCourses,
     });
   } catch (error) {
-    console.error("GET /api/instructor/dashboard error:", error);
+    logger.error("GET /api/instructor/dashboard error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar dados do instrutor" }, { status: 500 });
   }
 }

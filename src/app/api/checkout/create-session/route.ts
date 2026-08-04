@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 /**
  * Stripe Checkout Session Creator
@@ -71,7 +72,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ url: checkoutSession.url });
       } catch (stripeError) {
-        console.error("Stripe error:", stripeError);
+        logger.error("Stripe error", { error: stripeError instanceof Error ? stripeError.message : String(stripeError) });
         return NextResponse.json(
           { error: "Erro ao processar pagamento do plano" },
           { status: 500 }
@@ -133,7 +134,7 @@ export async function POST(request: Request) {
 
         return NextResponse.json({ url: checkoutSession.url });
       } catch (stripeError) {
-        console.error("Stripe error:", stripeError);
+        logger.error("Stripe error", { error: stripeError instanceof Error ? stripeError.message : String(stripeError) });
         return NextResponse.json(
           { error: "Erro ao processar pagamento" },
           { status: 500 }
@@ -148,7 +149,7 @@ export async function POST(request: Request) {
       message: "Pagamento não configurado. Configure STRIPE_SECRET_KEY para ativar.",
     });
   } catch (error) {
-    console.error("POST /api/checkout/create-session error:", error);
+    logger.error("POST /api/checkout/create-session error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao criar sessão de checkout" },
       { status: 500 }

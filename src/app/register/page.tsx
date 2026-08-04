@@ -2,7 +2,8 @@
 
 import { useState } from "react";
 import { useRouter } from "next/navigation";
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
+import { getRoleHome } from "@/lib/role-home";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -45,7 +46,10 @@ export default function RegisterPage() {
         redirect: false,
       });
 
-      router.push("/dashboard");
+      // New accounts are STUDENT by default, but use the role helper so
+      // this stays correct if account creation ever supports other roles.
+      const session = await getSession();
+      router.push(getRoleHome(session?.user?.role as string | undefined));
       router.refresh();
     } catch {
       setError("Erro de conexão. Tente novamente.");
@@ -149,7 +153,7 @@ export default function RegisterPage() {
 
           {/* Google Login */}
           <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => signIn("google", { callbackUrl: "/" })}
             className="flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">

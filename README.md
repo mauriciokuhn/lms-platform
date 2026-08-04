@@ -158,14 +158,17 @@ Acesse [http://localhost:3000](http://localhost:3000) 🎉
 npm run dev              # Servidor de desenvolvimento
 npm run build            # Build de produção
 npm run start            # Iniciar servidor de produção
-npm run lint             # ESLint
+npm run lint             # ESLint (falha com qualquer warning)
 npm run test             # Vitest (testes unitários)
 npm run test:e2e         # Playwright (testes E2E)
 npm run db:generate      # Gerar Prisma Client
 npm run db:push          # Sincronizar schema com banco
 npm run db:seed          # Semear dados iniciais
+npm run db:switch        # Alternar provider Prisma (sqlite ↔ postgresql)
 npm run generate-assets  # Gerar ícones PWA + favicon + OG image
+npm run env:check        # Validar .env contra o .env.example
 npm run preflight        # Verificar pré-requisitos antes do deploy
+npm run pre-deploy       # Gate completo: env:check + preflight + tsc + lint + test + build
 ```
 
 ---
@@ -274,23 +277,25 @@ No dashboard da Vercel, vá em **Settings → Environment Variables** e adicione
 
 ## Passo 3: Configurar PostgreSQL
 
-### 3.1 Ativar PostgreSQL no Prisma Schema
+### 3.1 Alternar o Provider do Prisma
 
-Edite `prisma/schema.prisma`:
+O schema fica commitado em **SQLite** para dev/testes (a suíte vitest cria
+bancos `test-*.db` isolados). Para Postgres, use o script `switch-provider.js`
+— ele reescreve o bloco `datasource` do schema automaticamente:
 
-```prisma
-// ✅ PRODUÇÃO: descomente este bloco
-datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
-}
+```bash
+# Para produção (PostgreSQL)
+node scripts/switch-provider.js postgresql
 
-// ❌ DESENVOLVIMENTO: comente este bloco
-// datasource db {
-//   provider = "sqlite"
-//   url      = "file:./dev.db"
-// }
+# Voltar para desenvolvimento (SQLite)
+node scripts/switch-provider.js sqlite
+
+# Ver o provider ativo
+node scripts/switch-provider.js --check
 ```
+
+> O build da Vercel já roda o switch para `postgresql` automaticamente
+> (`vercel.json`), então não é preciso editar o schema manualmente.
 
 ### 3.2 Rodar Migrations
 
@@ -311,20 +316,16 @@ npx prisma db seed
 
 ### 4.1 Verificação Pré-Deploy
 
-Sempre rode o preflight antes de publicar:
+Rode o gate completo antes de publicar (env:check → preflight → tsc → lint →
+testes → build; falha se algo estiver quebrado):
 
 ```bash
-npm run preflight
+npm run pre-deploy
 ```
 
-Isso verifica:
-- ✅ Todas as variáveis de ambiente obrigatórias
-- ✅ Prisma Client gerado
-- ✅ Conexão com PostgreSQL
-- ✅ TypeScript sem erros
-- ✅ Schema configurado para PostgreSQL
-- ✅ Assets públicos (ícones, favicon, OG image)
-- ⚠️ Serviços opcionais (email, Stripe, Sentry)
+Também é possível rodar as etapas individualmente:
+- `npm run env:check` — valida o `.env` contra o `.env.example`
+- `npm run preflight` — verifica env, Prisma Client, tsc, assets
 
 ### 4.2 Deploy na Vercel
 
@@ -338,10 +339,11 @@ npm i -g vercel
 vercel --prod
 ```
 
-A Vercel executa automaticamente:
+A Vercel executa automaticamente (conforme `vercel.json`):
 1. `npm install`
-2. `npx prisma generate`
-3. `npm run build` (que roda `next build`)
+2. `node scripts/switch-provider.js postgresql` — troca o provider para Postgres
+3. `npx prisma generate`
+4. `npm run build` (que roda `next build`)
 
 ### 4.3 Verificação Pós-Deploy
 
@@ -444,11 +446,10 @@ Sem a chave, o sistema funciona normalmente mas os emails são logados no consol
 
 Use este checklist antes de publicar:
 
-- [ ] **Variáveis de ambiente configuradas** no Vercel
-- [ ] **PostgreSQL ativo** no schema (não SQLite)
-- [ ] **Migrations rodadas** no banco de produção
+- [ ] **Variáveis de ambiente configuradas** no Vercel (incl. `DATABASE_URL` Postgres)
+- [ ] **Migrations rodadas** no banco de produção (`prisma db push`/`migrate deploy`)
 - [ ] **Build passa localmente** (`npm run build`)
-- [ ] **Preflight passa** (`npm run preflight`)
+- [ ] **Gate completo passa** (`npm run pre-deploy`)
 - [ ] **Google OAuth** configurado com redirect URIs de produção
 - [ ] **Resend** configurado (ou aceitar que emails não serão enviados)
 - [ ] **Stripe** configurado (se for cobrar)

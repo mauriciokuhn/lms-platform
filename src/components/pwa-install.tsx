@@ -10,16 +10,13 @@ interface BeforeInstallPromptEvent extends Event {
 export function PWAInstallPrompt() {
   const [deferredPrompt, setDeferredPrompt] = useState<BeforeInstallPromptEvent | null>(null);
   const [showPrompt, setShowPrompt] = useState(false);
-  const [installed, setInstalled] = useState(false);
+  const [installed, setInstalled] = useState(() =>
+    typeof window !== "undefined" &&
+    window.matchMedia("(display-mode: standalone)").matches
+  );
   const [dismissed, setDismissed] = useState(false);
 
   useEffect(() => {
-    // Check if already installed (display-mode: standalone)
-    if (window.matchMedia("(display-mode: standalone)").matches) {
-      setInstalled(true);
-      return;
-    }
-
     // Listen for the beforeinstallprompt event
     const handler = (e: Event) => {
       e.preventDefault();
@@ -105,16 +102,39 @@ export function PWAInstallPrompt() {
 /**
  * Register service worker
  * Called from Providers useEffect (already after DOM load)
+ *
+ * - PRODUCTION: registers /sw.js (PWA).
+ * - DEVELOPMENT: UNREGISTERS any previously registered SW and clears the
+ *   lms-* caches. A stale SW (registered in an earlier dev session) serves
+ *   old /_next/static/* chunks from cache, breaks Turbopack HMR with
+ *   ChunkLoadError and makes the dev client reload the page in an infinite
+ *   loop. Next handles reloads natively in dev, so no SW is needed there.
  */
 export function registerSW() {
-  if ("serviceWorker" in navigator) {
-    navigator.serviceWorker.register("/sw.js").then(
-      (registration) => {
-        console.log("✅ Service Worker registered:", registration.scope);
-      },
-      (err) => {
-        console.log("⚠️ Service Worker registration failed:", err);
-      }
-    );
+  if (typeof window === "undefined") return;
+  if (!("serviceWorker" in navigator)) return;
+
+  // Dev: remove any stale SW + caches left over from a previous session.
+  if (process.env.NODE_ENV !== "production") {
+    navigator.serviceWorker.getRegistrations().then((registrations) => {
+      for (const reg of registrations) reg.unregister();
+    });
+    if (window.caches) {
+      window.caches.keys().then((keys) => {
+        for (const key of keys) {
+          if (key.startsWith("lms-")) window.caches.delete(key);
+        }
+      });
+    }
+    return;
   }
+
+  navigator.serviceWorker.register("/sw.js").then(
+    (registration) => {
+      console.log("✅ Service Worker registered:", registration.scope);
+    },
+    (err) => {
+      console.log("⚠️ Service Worker registration failed:", err);
+    }
+  );
 }

@@ -34,7 +34,7 @@ export default function AdminCoursesPage() {
       try {
         const res = await fetch("/api/courses?all=true");
         const data = await res.json();
-        setCourses(data.map((c: any) => ({
+        setCourses(data.map((c: Course) => ({
           ...c,
           approvalStatus: c.approvalStatus || (c.published ? "approved" : "draft"),
           featured: c.featured || false,

@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -39,7 +40,7 @@ export async function GET(
       },
     });
   } catch (error) {
-    console.error("GET /api/certificates/verify/[code] error:", error);
+    logger.error("GET /api/certificates/verify/[code] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { valid: false, error: "Erro ao verificar certificado" },
       { status: 500 }

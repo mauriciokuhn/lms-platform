@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 function getWeekBounds(): { start: Date; end: Date } {
   const now = new Date();
@@ -45,7 +46,10 @@ export async function GET() {
         });
 
         // Aggregate XP by user
-        const xpMap = new Map<string, { user: any; xp: number }>();
+        const xpMap = new Map<
+          string,
+          { user: { id: string; name: string | null; image: string | null; email: string }; xp: number }
+        >();
         for (const a of achievements) {
           const existing = xpMap.get(a.userId);
           if (existing) {
@@ -99,7 +103,7 @@ export async function GET() {
       totalParticipants,
     });
   } catch (error) {
-    console.error("GET /api/social/weekly-ranking error:", error);
+    logger.error("GET /api/social/weekly-ranking error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar ranking semanal" }, { status: 500 });
   }
 }

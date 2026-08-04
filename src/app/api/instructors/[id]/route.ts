@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -68,7 +69,7 @@ export async function GET(
       courses,
     });
   } catch (error) {
-    console.error("GET /api/instructors/[id] error:", error);
+    logger.error("GET /api/instructors/[id] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar instrutor" }, { status: 500 });
   }
 }

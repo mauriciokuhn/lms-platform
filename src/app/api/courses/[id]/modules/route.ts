@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -22,7 +23,7 @@ export async function GET(
 
     return NextResponse.json(modules);
   } catch (error) {
-    console.error("GET /api/courses/[id]/modules error:", error);
+    logger.error("GET /api/courses/[id]/modules error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar módulos" }, { status: 500 });
   }
 }
@@ -56,7 +57,7 @@ export async function POST(
       nextIndex = (lastModule?.orderIndex ?? 0) + 1;
     }
 
-    const module = await db.module.create({
+    const newModule = await db.module.create({
       data: {
         title,
         description: description || null,
@@ -65,9 +66,9 @@ export async function POST(
       },
     });
 
-    return NextResponse.json(module, { status: 201 });
+    return NextResponse.json(newModule, { status: 201 });
   } catch (error) {
-    console.error("POST /api/courses/[id]/modules error:", error);
+    logger.error("POST /api/courses/[id]/modules error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao criar módulo" }, { status: 500 });
   }
 }

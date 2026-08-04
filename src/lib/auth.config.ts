@@ -1,4 +1,5 @@
 import type { NextAuthConfig } from "next-auth";
+import { getRoleHome } from "./role-home";
 
 // This is a separate config for edge-compatible middleware usage
 export const authConfig = {
@@ -7,15 +8,19 @@ export const authConfig = {
   },
   callbacks: {
     authorized({ auth, request: { nextUrl } }) {
+      const role = auth?.user?.role as string | undefined;
       const isLoggedIn = !!auth?.user;
-      const isAdmin = auth?.user?.role === "ADMIN";
+      const isAdmin = role === "ADMIN";
+      const isInstructor = role === "INSTRUCTOR";
       const isOnAdmin = nextUrl.pathname.startsWith("/admin");
+      const isOnInstructor = nextUrl.pathname.startsWith("/instrutor");
       const isOnDashboard = nextUrl.pathname.startsWith("/dashboard");
       const isOnLogin = nextUrl.pathname.startsWith("/login");
+      const isOnRegister = nextUrl.pathname.startsWith("/register");
 
-      // Redirect logged-in users away from login
-      if (isOnLogin && isLoggedIn) {
-        return Response.redirect(new URL("/dashboard", nextUrl));
+      // Redirect logged-in users away from auth pages, to their role home
+      if ((isOnLogin || isOnRegister) && isLoggedIn) {
+        return Response.redirect(new URL(getRoleHome(role), nextUrl));
       }
 
       // Admin routes require ADMIN role
@@ -23,9 +28,20 @@ export const authConfig = {
         return Response.redirect(new URL("/login", nextUrl));
       }
 
-      // Dashboard and other protected routes require login
-      if (isOnDashboard && !isLoggedIn) {
+      // Instructor routes require INSTRUCTOR role (admin uses /admin)
+      if (isOnInstructor && !isInstructor) {
         return Response.redirect(new URL("/login", nextUrl));
+      }
+
+      // Dashboard requires login; admins are sent to the admin home.
+      // (Instructors stay: the instructor layout links back to /dashboard.)
+      if (isOnDashboard) {
+        if (!isLoggedIn) {
+          return Response.redirect(new URL("/login", nextUrl));
+        }
+        if (isAdmin) {
+          return Response.redirect(new URL("/admin", nextUrl));
+        }
       }
 
       return true;
@@ -33,7 +49,7 @@ export const authConfig = {
     jwt({ token, user }) {
       if (user) {
         token.id = user.id as string;
-        token.role = (user as any).role;
+        token.role = user.role;
       }
       return token;
     },

@@ -5,6 +5,8 @@
  * Falls back to local uploads when cloud storage is not configured.
  */
 
+import { logger } from "@/lib/logger";
+
 interface UploadOptions {
   /** File buffer or Blob */
   file: Buffer | Blob;
@@ -115,7 +117,7 @@ export async function deleteFile(key: string): Promise<boolean> {
 
     return true;
   } catch (error) {
-    console.error("S3 delete error:", error);
+    logger.error("S3 delete error", { error: error instanceof Error ? error.message : String(error) });
     return false;
   }
 }

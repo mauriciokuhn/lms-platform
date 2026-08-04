@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -47,7 +48,7 @@ export async function GET(
 
     return NextResponse.json(course);
   } catch (error) {
-    console.error("GET /api/courses/[id] error:", error);
+    logger.error("GET /api/courses/[id] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar curso" }, { status: 500 });
   }
 }
@@ -94,7 +95,7 @@ export async function PUT(
 
     return NextResponse.json(course);
   } catch (error) {
-    console.error("PUT /api/courses/[id] error:", error);
+    logger.error("PUT /api/courses/[id] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar curso" }, { status: 500 });
   }
 }
@@ -114,7 +115,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/courses/[id] error:", error);
+    logger.error("DELETE /api/courses/[id] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao excluir curso" }, { status: 500 });
   }
 }

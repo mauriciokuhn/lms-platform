@@ -20,10 +20,12 @@ export function AdminMobileMenu({ userName }: AdminMobileMenuProps) {
   const [isOpen, setIsOpen] = useState(false);
   const pathname = usePathname();
 
-  // Close on route change
-  useEffect(() => {
+  // Close the drawer when the route changes (adjust state during render)
+  const [prevPathname, setPrevPathname] = useState(pathname);
+  if (prevPathname !== pathname) {
+    setPrevPathname(pathname);
     setIsOpen(false);
-  }, [pathname]);
+  }
 
   // Prevent body scroll when menu open
   useEffect(() => {

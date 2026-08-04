@@ -21,10 +21,19 @@ import { readFileSync } from "fs";
 import { join } from "path";
 import { cwd } from "process";
 
-const REQUIRED_ENV_VARS = [
-  { name: "DATABASE_URL", desc: "PostgreSQL connection string", productionOnly: true },
-  { name: "NEXTAUTH_SECRET", desc: "Auth secret (generate via: openssl rand -base64 32)", productionOnly: false },
-  { name: "NEXTAUTH_URL", desc: "Full deployment URL", productionOnly: false },
+// AUTH_* are the canonical names (Auth.js v5); the legacy NEXTAUTH_* names
+// are accepted as aliases (the CI workflow still exports them).
+type RequiredEnvVar = {
+  name: string;
+  desc: string;
+  productionOnly: boolean;
+  aliases?: string[];
+};
+
+const REQUIRED_ENV_VARS: RequiredEnvVar[] = [
+  { name: "DATABASE_URL", desc: "Database connection string", productionOnly: true },
+  { name: "AUTH_SECRET", aliases: ["NEXTAUTH_SECRET"], desc: "Auth secret (generate via: openssl rand -base64 32)", productionOnly: false },
+  { name: "AUTH_URL", aliases: ["NEXTAUTH_URL"], desc: "Full deployment URL", productionOnly: false },
   { name: "NEXT_PUBLIC_APP_URL", desc: "Public app URL", productionOnly: false },
 ];
 
@@ -32,10 +41,15 @@ const OPTIONAL_ENV_VARS = [
   { name: "AUTH_GOOGLE_ID", desc: "Google OAuth Client ID", dependsOn: "Google login" },
   { name: "AUTH_GOOGLE_SECRET", desc: "Google OAuth Client Secret", dependsOn: "Google login" },
   { name: "RESEND_API_KEY", desc: "Transactional emails (password reset, welcome)", dependsOn: "Email sending" },
+  { name: "UPSTASH_REDIS_REST_URL", desc: "Persistent rate limiting + cache layer", dependsOn: "Upstash Redis" },
+  { name: "UPSTASH_REDIS_REST_TOKEN", desc: "Upstash Redis token", dependsOn: "Upstash Redis" },
   { name: "STRIPE_SECRET_KEY", desc: "Payment processing", dependsOn: "Paid courses/plans" },
   { name: "STRIPE_WEBHOOK_SECRET", desc: "Stripe webhook verification", dependsOn: "Paid courses/plans" },
-  { name: "UPLOADTHING_SECRET", desc: "File uploads (thumbnails, PDFs)", dependsOn: "Instructor uploads" },
-  { name: "UPLOADTHING_APP_ID", desc: "UploadThing app identifier", dependsOn: "Instructor uploads" },
+  { name: "S3_ACCESS_KEY_ID", desc: "File uploads (S3-compatible)", dependsOn: "Instructor uploads" },
+  { name: "S3_SECRET_ACCESS_KEY", desc: "File uploads (S3-compatible)", dependsOn: "Instructor uploads" },
+  { name: "NEXT_PUBLIC_VAPID_PUBLIC_KEY", desc: "Web push notifications", dependsOn: "Push notifications" },
+  { name: "VAPID_PRIVATE_KEY", desc: "Web push notifications", dependsOn: "Push notifications" },
+  { name: "YOUTUBE_API_KEY", desc: "YouTube video metadata", dependsOn: "Video lessons" },
   { name: "NEXT_PUBLIC_SENTRY_DSN", desc: "Error monitoring", dependsOn: "Sentry" },
 ];
 
@@ -189,7 +203,41 @@ function checkAssets() {
 
 // ─── Main ────────────────────────────────
 
+// Load `.env` into process.env (without overriding existing shell vars) so
+// the check works out of the box locally, matching env:check's file-based
+// validation. In CI the vars come from the workflow env block instead.
+function loadDotEnv() {
+  const envPath = join(cwd(), ".env");
+  if (!existsSync(envPath)) return;
+  for (const rawLine of readFileSync(envPath, "utf8").split(/\r?\n/)) {
+    const line = rawLine.trim();
+    if (!line || line.startsWith("#")) continue;
+    const withoutExport = line.startsWith("export ")
+      ? line.slice("export ".length).trim()
+      : line;
+    const eq = withoutExport.indexOf("=");
+    if (eq <= 0) continue;
+    const key = withoutExport.slice(0, eq).trim();
+    if (process.env[key] !== undefined) continue; // shell/CI env wins
+    let value = withoutExport.slice(eq + 1).trim();
+    // Strip surrounding quotes FIRST — a quoted value may contain " # ".
+    const quoted =
+      (value.startsWith('"') && value.endsWith('"')) ||
+      (value.startsWith("'") && value.endsWith("'"));
+    if (quoted) {
+      value = value.slice(1, -1);
+    } else {
+      // Unquoted: strip trailing inline comment ("KEY=value # note") so
+      // placeholder detection matches env-check's parser.
+      value = value.replace(/\s+#.*$/, "").trim();
+    }
+    process.env[key] = value;
+  }
+}
+
 async function main() {
+  loadDotEnv();
+
   console.log(`${BOLD}${CYAN}`);
   console.log("╔══════════════════════════════════════════╗");
   console.log("║    LMS Platform — Pre-flight Check       ║");
@@ -208,11 +256,14 @@ async function main() {
       ok(`${env.name}`, `Required in production only`);
       continue;
     }
-    if (process.env[env.name]) {
-      const val = process.env[env.name]!;
-      if (env.name === "NEXTAUTH_SECRET" && val.length < 16) {
-        warn(`${env.name}`, `Very short secret (${val.length} chars). Generate a strong one.`);
-      } else if (env.name === "NEXTAUTH_SECRET" && (val === "your-secret-here" || val === "change-me")) {
+    // Accept the canonical name or any documented alias.
+    const value =
+      process.env[env.name] ??
+      env.aliases?.map((alias) => process.env[alias]).find(Boolean);
+    if (value) {
+      if (env.name === "AUTH_SECRET" && value.length < 16) {
+        warn(`${env.name}`, `Very short secret (${value.length} chars). Generate a strong one.`);
+      } else if (env.name === "AUTH_SECRET" && (value === "your-secret-here" || value === "change-me")) {
         fail(`${env.name}`, `Secret is a placeholder value!`);
         missingRequired.push(env.name);
       } else {
@@ -288,6 +339,9 @@ async function main() {
   }
 
   console.log(`\n${GRAY}Run: npm run build && npm run db:push && npx tsx scripts/preflight.ts${RESET}\n`);
+
+  // Gate for CI: exit non-zero when any check failed.
+  process.exitCode = failed > 0 ? 1 : 0;
 }
 
 main().catch((error) => {

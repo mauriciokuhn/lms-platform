@@ -1,9 +1,10 @@
 "use client";
 
-import { signIn } from "next-auth/react";
+import { signIn, getSession } from "next-auth/react";
 import { useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { getRoleHome } from "@/lib/role-home";
 
 export default function LoginPage() {
   const router = useRouter();
@@ -23,13 +24,22 @@ export default function LoginPage() {
       redirect: false,
     });
 
+    // Rate-limited (429): the wrapper returns { error } with X-RateLimit-*.
+    if (result?.status === 429 || (result?.error ?? "").includes("Muitas requisições")) {
+      setError("Muitas tentativas de login. Aguarde um minuto e tente novamente.");
+      setLoading(false);
+      return;
+    }
+
     if (result?.error) {
       setError("Email ou senha inválidos.");
       setLoading(false);
       return;
     }
 
-    router.push("/dashboard");
+    // Send each user to their role home (admin → /admin, instructor → /instrutor)
+    const session = await getSession();
+    router.push(getRoleHome(session?.user?.role as string | undefined));
     router.refresh();
   }
 
@@ -119,7 +129,7 @@ export default function LoginPage() {
 
           {/* Google Login */}
           <button
-            onClick={() => signIn("google", { callbackUrl: "/dashboard" })}
+            onClick={() => signIn("google", { callbackUrl: "/" })}
             className="flex w-full items-center justify-center gap-3 rounded-lg border border-zinc-300 px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50"
           >
             <svg className="h-5 w-5" viewBox="0 0 24 24">

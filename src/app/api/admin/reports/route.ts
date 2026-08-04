@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
   try {
@@ -48,7 +49,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),
@@ -95,7 +96,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),
@@ -135,7 +136,7 @@ export async function GET(request: Request) {
             headers.join(","),
             ...data.map((row) =>
               headers.map((h) => {
-                const val = String((row as any)[h] ?? "");
+                const val = String((row as Record<string, unknown>)[h] ?? "");
                 return val.includes(",") ? `"${val}"` : val;
               }).join(",")
             ),
@@ -156,7 +157,7 @@ export async function GET(request: Request) {
         return NextResponse.json({ error: "Tipo de relatório inválido" }, { status: 400 });
     }
   } catch (error) {
-    console.error("GET /api/admin/reports error:", error);
+    logger.error("GET /api/admin/reports error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao gerar relatório" }, { status: 500 });
   }
 }

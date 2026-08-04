@@ -94,6 +94,7 @@ export default function PerfilPage() {
               <div className="-mt-12 flex items-end gap-4">
                 <div className="flex h-24 w-24 items-center justify-center rounded-2xl border-4 border-white bg-gradient-to-br from-zinc-200 to-zinc-300 text-3xl shadow-lg dark:border-zinc-900 dark:from-zinc-700 dark:to-zinc-600">
                   {profile.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- user profile image
                     <img src={profile.user.image} alt="" className="h-full w-full rounded-xl object-cover" />
                   ) : (
                     session.user.name?.charAt(0).toUpperCase() || "👤"

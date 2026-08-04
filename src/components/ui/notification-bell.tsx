@@ -60,9 +60,15 @@ export function useNotificationAlert(tone?: SoundTone) {
 
       try {
         if (!audioCtxRef.current) {
-          audioCtxRef.current = new (window.AudioContext || (window as any).webkitAudioContext)();
+          const AudioCtx =
+            window.AudioContext ||
+            (window as Window & { webkitAudioContext?: typeof AudioContext }).webkitAudioContext;
+          if (AudioCtx) {
+            audioCtxRef.current = new AudioCtx();
+          }
         }
         const ctx = audioCtxRef.current;
+        if (!ctx) return;
 
         if (ctx.state === "suspended") {
           ctx.resume();
@@ -226,6 +232,7 @@ export function NotificationBell() {
   const [unreadCount, setUnreadCount] = useState(0);
   const [isOpen, setIsOpen] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [hasNew, setHasNew] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
   const eventSourceRef = useRef<EventSource | null>(null);
   const prevCountRef = useRef(0);
@@ -249,7 +256,9 @@ export function NotificationBell() {
 
   useEffect(() => {
     if (!session?.user) return;
-    fetchNotifications();
+    (async () => {
+      await fetchNotifications();
+    })();
   }, [session, fetchNotifications]);
 
   // ── SSE subscription for real-time updates ──
@@ -279,6 +288,7 @@ export function NotificationBell() {
           });
 
           setUnreadCount((prev) => prev + items.length);
+          setHasNew(true);
         }
       } catch {
         // silent
@@ -346,12 +356,14 @@ export function NotificationBell() {
 
   if (!session?.user) return null;
 
-  const hasNew = unreadCount > prevCountRef.current;
-
   return (
     <div className="relative" ref={dropdownRef}>
       <button
-        onClick={() => setIsOpen(!isOpen)}
+        onClick={() => {
+          const next = !isOpen;
+          setIsOpen(next);
+          if (next) setHasNew(false);
+        }}
         className="relative flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
         aria-label="Notificações"
       >

@@ -37,7 +37,7 @@ export function PremiumContent({
   const { data: session } = useSession();
   const [showPrompt, setShowPrompt] = useState(true);
 
-  const userPlan = (session?.user as any)?.plan || "FREE";
+  const userPlan = session?.user?.plan || "FREE";
   const planHierarchy: Record<string, number> = {
     FREE: 0,
     PRO: 1,
@@ -159,7 +159,7 @@ export function PremiumBadge({ plan = "PRO" }: { plan?: "PRO" | "ENTERPRISE" }) 
  */
 export function usePlan() {
   const { data: session } = useSession();
-  const userPlan = (session?.user as any)?.plan || "FREE";
+  const userPlan = session?.user?.plan || "FREE";
   const planHierarchy: Record<string, number> = {
     FREE: 0,
     PRO: 1,

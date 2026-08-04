@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -126,7 +127,7 @@ export async function GET(
       memberSince: instructor.createdAt.toISOString(),
     });
   } catch (error) {
-    console.error("GET /api/admin/instructor-metrics/[id] error:", error);
+    logger.error("GET /api/admin/instructor-metrics/[id] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar métricas do instrutor" }, { status: 500 });
   }
 }

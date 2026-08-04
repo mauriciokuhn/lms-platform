@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
+import { logger } from "@/lib/logger";
 
 export async function GET() {
   try {
@@ -43,13 +44,6 @@ export async function GET() {
     // If current user not in top 20, get their position
     let userRank = currentUserRank;
     if (currentUserRank === 0) {
-      const count = await db.userXP.count({
-        where: {
-          xp: { gt: 0 },
-          user: { role: "STUDENT" },
-        },
-      });
-
       const currentUserXP = await db.userXP.findUnique({
         where: { userId: session.user.id },
       });
@@ -71,7 +65,7 @@ export async function GET() {
       totalStudents: await db.user.count({ where: { role: "STUDENT" } }),
     });
   } catch (error) {
-    console.error("GET /api/gamification/ranking error:", error);
+    logger.error("GET /api/gamification/ranking error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar ranking" }, { status: 500 });
   }
 }

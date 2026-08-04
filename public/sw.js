@@ -1,8 +1,10 @@
 // ──────────────────────────────────────────
 // LMS Platform - Service Worker
 // ──────────────────────────────────────────
-// Cache name includes version for easy updates
-const CACHE_VERSION = 'v1';
+// Cache name includes version for easy updates. Bumped to v2 because v1
+// used cache-first for /_next/static/*, which served stale chunks in dev
+// and caused an infinite reload loop (ChunkLoadError + Turbopack HMR).
+const CACHE_VERSION = 'v2';
 const STATIC_CACHE = `lms-static-${CACHE_VERSION}`;
 const DYNAMIC_CACHE = `lms-dynamic-${CACHE_VERSION}`;
 const API_CACHE = `lms-api-${CACHE_VERSION}`;
@@ -64,14 +66,18 @@ self.addEventListener('fetch', (event) => {
     return;
   }
 
-  // ── Static assets (JS, CSS, images): Cache first ──
+  // ── Static assets (JS, CSS, images): Network first ──
+  // NEVER cache-first. In dev, serving chunks from cache breaks Turbopack
+  // HMR (ChunkLoadError → infinite page reload). In prod, Next.js already
+  // emits `public, max-age=31536000, immutable` for fingerprinted assets,
+  // so the browser caches them natively; the SW only needs them for offline.
   if (
     request.destination === 'script' ||
     request.destination === 'style' ||
     request.destination === 'font' ||
     request.destination === 'image'
   ) {
-    event.respondWith(cacheFirst(request, STATIC_CACHE));
+    event.respondWith(networkFirst(request, STATIC_CACHE));
     return;
   }
 
@@ -89,24 +95,7 @@ self.addEventListener('fetch', (event) => {
 // CACHE STRATEGIES
 // ──────────────────────────────────────────
 
-// Cache First - for static assets that don't change
-async function cacheFirst(request, cacheName) {
-  const cached = await caches.match(request);
-  if (cached) return cached;
-
-  try {
-    const response = await fetch(request);
-    if (response.ok) {
-      const cache = await caches.open(cacheName);
-      cache.put(request, response.clone());
-    }
-    return response;
-  } catch {
-    return new Response('Offline', { status: 503 });
-  }
-}
-
-// Network First - for dynamic content
+// Network First - for assets and API responses
 async function networkFirst(request, cacheName) {
   try {
     const response = await fetch(request);
@@ -118,10 +107,15 @@ async function networkFirst(request, cacheName) {
   } catch {
     const cached = await caches.match(request);
     if (cached) return cached;
-    return new Response(JSON.stringify({ error: 'Offline' }), {
-      status: 503,
-      headers: { 'Content-Type': 'application/json' },
-    });
+    // JSON-ish fallback for API calls, generic 503 otherwise.
+    const isApi = request.url.includes('/api/');
+    return new Response(
+      isApi ? JSON.stringify({ error: 'Offline' }) : 'Offline',
+      {
+        status: 503,
+        headers: isApi ? { 'Content-Type': 'application/json' } : {},
+      }
+    );
   }
 }
 

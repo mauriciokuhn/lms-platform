@@ -1,64 +1,57 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useState, useSyncExternalStore } from "react";
+
+const emptySubscribe = () => () => {};
+
+/** Reads the persisted theme on the client; safe defaults on the server. */
+function readInitialTheme(): { dark: boolean; auto: boolean } {
+  if (typeof window === "undefined") return { dark: false, auto: false };
+  const stored = localStorage.getItem("theme");
+  if (stored === "light") return { dark: false, auto: false };
+  if (stored === "dark") return { dark: true, auto: false };
+  return {
+    dark: window.matchMedia("(prefers-color-scheme: dark)").matches,
+    auto: true,
+  };
+}
 
 export function ThemeToggle() {
-  const [dark, setDark] = useState(false);
-  const [mounted, setMounted] = useState(false);
-  const [auto, setAuto] = useState(false);
+  const [theme, setTheme] = useState(readInitialTheme);
+  const mounted = useSyncExternalStore(emptySubscribe, () => true, () => false);
+  const { dark, auto } = theme;
 
+  // Apply the theme class to <html> and listen for system preference changes.
   useEffect(() => {
-    setMounted(true);
-    
-    // Listen for system preference changes
+    document.documentElement.classList.toggle("dark", dark);
+
     const mediaQuery = window.matchMedia("(prefers-color-scheme: dark)");
-    
+
     function updateFromSystem(e: MediaQueryListEvent | MediaQueryList) {
       const stored = localStorage.getItem("theme");
       if (stored !== "light" && stored !== "dark") {
         // Auto mode: follow system
         const isDark = e.matches;
-        setDark(isDark);
-        setAuto(true);
+        setTheme({ dark: isDark, auto: true });
         document.documentElement.classList.toggle("dark", isDark);
       } else {
-        setAuto(false);
+        setTheme((t) => ({ ...t, auto: false }));
       }
     }
-    
-    // Initial setup
-    const stored = localStorage.getItem("theme");
-    if (stored === "light") {
-      setDark(false);
-      setAuto(false);
-      document.documentElement.classList.remove("dark");
-    } else if (stored === "dark") {
-      setDark(true);
-      setAuto(false);
-      document.documentElement.classList.add("dark");
-    } else {
-      // Auto: follow system
-      const isDark = mediaQuery.matches;
-      setDark(isDark);
-      setAuto(true);
-      document.documentElement.classList.toggle("dark", isDark);
-    }
-    
-    // Listen for system changes
+
     mediaQuery.addEventListener("change", updateFromSystem);
     return () => mediaQuery.removeEventListener("change", updateFromSystem);
-  }, []);
+  }, [dark]);
 
   function toggleTheme() {
     if (auto) {
       // If in auto mode, switch to explicit dark
-      setAuto(false);
-      setDark(true);
+      setTheme({ dark: true, auto: false });
       document.documentElement.classList.add("dark");
       localStorage.setItem("theme", "dark");
     } else {
       const next = !dark;
-      setDark(next);
+      setTheme({ dark: next, auto: false });
       document.documentElement.classList.toggle("dark", next);
       localStorage.setItem("theme", next ? "dark" : "light");
     }

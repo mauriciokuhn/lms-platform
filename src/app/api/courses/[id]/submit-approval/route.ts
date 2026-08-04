@@ -2,7 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
-import { notifyAllStudents } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   _request: Request,
@@ -79,7 +79,7 @@ export async function POST(
 
     return NextResponse.json({ success: true, message: "Curso enviado para aprovação!" });
   } catch (error) {
-    console.error("POST submit-approval error:", error);
+    logger.error("POST submit-approval error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao enviar para aprovação" }, { status: 500 });
   }
 }

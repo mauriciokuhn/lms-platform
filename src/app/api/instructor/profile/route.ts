@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function PUT(request: Request) {
   try {
@@ -19,7 +20,7 @@ export async function PUT(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("PUT /api/instructor/profile error:", error);
+    logger.error("PUT /api/instructor/profile error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar perfil" }, { status: 500 });
   }
 }
@@ -45,7 +46,7 @@ export async function GET() {
 
     return NextResponse.json(instructor);
   } catch (error) {
-    console.error("GET /api/instructor/profile error:", error);
+    logger.error("GET /api/instructor/profile error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar perfil" }, { status: 500 });
   }
 }

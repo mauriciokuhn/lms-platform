@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { cache } from "@/lib/cache";
 import { notifyAllStudents } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function GET(request: Request) {
   try {
@@ -82,7 +83,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(formatted);
   } catch (error) {
-    console.error("GET /api/courses error:", error);
+    logger.error("GET /api/courses error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar cursos" }, { status: 500 });
   }
 }
@@ -127,7 +128,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(course, { status: 201 });
   } catch (error) {
-    console.error("POST /api/courses error:", error);
+    logger.error("POST /api/courses error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao criar curso" }, { status: 500 });
   }
 }

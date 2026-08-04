@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { blockDemoUser } from "@/lib/demo-mode";
 import { notifyUser } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: Request,
@@ -202,7 +203,7 @@ export async function POST(
       results,
     });
   } catch (error) {
-    console.error("POST /api/courses/[id]/quizzes/[quizId]/attempt error:", error);
+    logger.error("POST /api/courses/[id]/quizzes/[quizId]/attempt error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao processar tentativa" }, { status: 500 });
   }
 }

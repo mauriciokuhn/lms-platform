@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export type UserSettingsData = {
   soundEnabled: boolean;
@@ -50,7 +51,7 @@ export async function GET() {
       dndEndTime: settings.dndEndTime,
     } satisfies UserSettingsData);
   } catch (error) {
-    console.error("GET /api/settings error:", error);
+    logger.error("GET /api/settings error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar configurações" }, { status: 500 });
   }
 }
@@ -100,9 +101,9 @@ export async function PATCH(request: Request) {
       where: { userId: session.user.id },
       create: {
         userId: session.user.id,
-        ...data as any,
+        ...data as unknown as Partial<UserSettingsData>,
       },
-      update: data as any,
+      update: data as unknown as Partial<UserSettingsData>,
     });
 
     return NextResponse.json({
@@ -114,7 +115,7 @@ export async function PATCH(request: Request) {
       dndEndTime: settings.dndEndTime,
     } satisfies UserSettingsData);
   } catch (error) {
-    console.error("PATCH /api/settings error:", error);
+    logger.error("PATCH /api/settings error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao salvar configurações" }, { status: 500 });
   }
 }

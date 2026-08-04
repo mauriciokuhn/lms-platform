@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 // ──────────────────────────────────────────
 // GET  /api/courses/[id]/reviews
@@ -56,7 +57,7 @@ export async function GET(
       distribution,
     });
   } catch (error) {
-    console.error("GET /api/courses/[id]/reviews error:", error);
+    logger.error("GET /api/courses/[id]/reviews error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao carregar avaliações" },
       { status: 500 }
@@ -131,7 +132,7 @@ export async function POST(
       user: review.user,
     });
   } catch (error) {
-    console.error("POST /api/courses/[id]/reviews error:", error);
+    logger.error("POST /api/courses/[id]/reviews error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao salvar avaliação" },
       { status: 500 }

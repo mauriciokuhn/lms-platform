@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/notifications
@@ -41,7 +42,7 @@ export async function GET() {
       unreadCount,
     });
   } catch (error) {
-    console.error("GET /api/notifications error:", error);
+    logger.error("GET /api/notifications error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar notificações" }, { status: 500 });
   }
 }
@@ -89,7 +90,7 @@ export async function PATCH(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("PATCH /api/notifications error:", error);
+    logger.error("PATCH /api/notifications error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar notificações" }, { status: 500 });
   }
 }

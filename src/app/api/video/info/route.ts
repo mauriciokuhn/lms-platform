@@ -1,5 +1,6 @@
 import { NextResponse } from "next/server";
 import { extractYouTubeId, getVideoInfo } from "@/lib/youtube";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/video/info?url=...
@@ -34,7 +35,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json(info);
   } catch (error) {
-    console.error("GET /api/video/info error:", error);
+    logger.error("GET /api/video/info error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao buscar informações do vídeo" },
       { status: 500 }

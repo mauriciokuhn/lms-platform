@@ -1,0 +1,72 @@
+name: Deploy Preview (Vercel)
+
+# Deploys a Vercel preview environment for every pull request (and for each
+# new push to the PR) and posts/updates a comment with the preview URL.
+# Mirrors the Vercel CLI approach of deploy.yml (production), so both share
+# the same secrets (VERCEL_TOKEN, VERCEL_ORG_ID, VERCEL_PROJECT_ID).
+#
+# Requirements (set once in the repo/dashboard):
+#   - secrets.VERCEL_TOKEN        — Vercel access token
+#   - secrets.VERCEL_ORG_ID       — Vercel team/user ID
+#   - secrets.VERCEL_PROJECT_ID   — Vercel project ID
+#   - Preview environment variables configured in the Vercel project
+#     (the build itself is executed remotely by `vercel build`).
+on:
+  pull_request:
+    types: [opened, synchronize, reopened]
+
+env:
+  VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+  VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+
+jobs:
+  deploy-preview:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Install Vercel CLI
+        run: npm install --global vercel
+
+      - name: Pull Vercel Environment Information (preview)
+        run: vercel pull --yes --environment=preview --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Build Project Artifacts (preview)
+        run: vercel build --token=${{ secrets.VERCEL_TOKEN }}
+
+      - name: Deploy Preview to Vercel
+        id: deploy
+        run: |
+          PREVIEW_URL="$(vercel deploy --prebuilt --yes --token=${{ secrets.VERCEL_TOKEN }} | grep -oE 'https://[a-zA-Z0-9-]+\.vercel\.app' | head -1)"
+          echo "url=${PREVIEW_URL}" >> "$GITHUB_OUTPUT"
+
+      - name: Comment Preview URL on PR
+        uses: actions/github-script@v6
+        with:
+          github-token: ${{ secrets.GITHUB_TOKEN }}
+          script: |
+            const url = '${{ steps.deploy.outputs.url }}';
+            const marker = '<!-- vercel-preview -->';
+            const body = `${marker}\n🚀 **Preview deploy disponível:** ${url || '*deployment concluído (URL não capturada)*'}\n\nGerado automaticamente para cada push neste PR.`;
+            const { data: comments } = await github.rest.issues.listComments({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              issue_number: context.issue.number,
+            });
+            const existing = comments.find((c) => c.body && c.body.includes(marker));
+            if (existing) {
+              await github.rest.issues.updateComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                comment_id: existing.id,
+                body,
+              });
+            } else {
+              await github.rest.issues.createComment({
+                owner: context.repo.owner,
+                repo: context.repo.repo,
+                issue_number: context.issue.number,
+                body,
+              });
+            }

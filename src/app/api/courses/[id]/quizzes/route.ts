@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -19,7 +20,7 @@ export async function GET(
 
     return NextResponse.json(quizzes);
   } catch (error) {
-    console.error("GET /api/courses/[id]/quizzes error:", error);
+    logger.error("GET /api/courses/[id]/quizzes error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar quizzes" }, { status: 500 });
   }
 }
@@ -36,7 +37,11 @@ export async function POST(
 
     const { id: courseId } = await params;
     const body = await request.json();
-    const { title, description, passingScore, maxAttempts, questions } = body;
+    const { title, description, passingScore, maxAttempts } = body;
+    const questions = (body.questions ?? []) as {
+      text: string;
+      options: { text: string; isCorrect?: boolean }[];
+    }[];
 
     if (!title) {
       return NextResponse.json({ error: "Título é obrigatório" }, { status: 400 });
@@ -49,13 +54,13 @@ export async function POST(
         passingScore: passingScore || 70,
         maxAttempts: maxAttempts || 3,
         courseId,
-        ...(questions && {
+        ...(questions.length > 0 && {
           questions: {
-            create: questions.map((q: any, qi: number) => ({
+            create: questions.map((q, qi) => ({
               text: q.text,
               orderIndex: qi + 1,
               options: {
-                create: q.options.map((o: any, oi: number) => ({
+                create: q.options.map((o) => ({
                   text: o.text,
                   isCorrect: o.isCorrect || false,
                 })),
@@ -73,7 +78,7 @@ export async function POST(
 
     return NextResponse.json(quiz, { status: 201 });
   } catch (error) {
-    console.error("POST /api/courses/[id]/quizzes error:", error);
+    logger.error("POST /api/courses/[id]/quizzes error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao criar quiz" }, { status: 500 });
   }
 }

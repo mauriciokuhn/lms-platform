@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function PUT(
   request: Request,
@@ -31,7 +32,7 @@ export async function PUT(
 
     return NextResponse.json(lesson);
   } catch (error) {
-    console.error("PUT /api/courses/[id]/modules/[moduleId]/lessons/[lessonId] error:", error);
+    logger.error("PUT /api/courses/[id]/modules/[moduleId]/lessons/[lessonId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar aula" }, { status: 500 });
   }
 }
@@ -51,7 +52,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/courses/[id]/modules/[moduleId]/lessons/[lessonId] error:", error);
+    logger.error("DELETE /api/courses/[id]/modules/[moduleId]/lessons/[lessonId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao excluir aula" }, { status: 500 });
   }
 }

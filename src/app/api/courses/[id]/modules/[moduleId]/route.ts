@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 export async function PUT(
   request: Request,
@@ -16,7 +17,7 @@ export async function PUT(
     const body = await request.json();
     const { title, description, orderIndex } = body;
 
-    const module = await db.module.update({
+    const updatedModule = await db.module.update({
       where: { id: moduleId },
       data: {
         ...(title !== undefined && { title }),
@@ -25,9 +26,9 @@ export async function PUT(
       },
     });
 
-    return NextResponse.json(module);
+    return NextResponse.json(updatedModule);
   } catch (error) {
-    console.error("PUT /api/courses/[id]/modules/[moduleId] error:", error);
+    logger.error("PUT /api/courses/[id]/modules/[moduleId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao atualizar módulo" }, { status: 500 });
   }
 }
@@ -47,7 +48,7 @@ export async function DELETE(
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("DELETE /api/courses/[id]/modules/[moduleId] error:", error);
+    logger.error("DELETE /api/courses/[id]/modules/[moduleId] error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao excluir módulo" }, { status: 500 });
   }
 }

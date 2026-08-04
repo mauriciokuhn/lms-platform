@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { searchYouTube } from "@/lib/youtube";
 import { auth } from "@/lib/auth";
+import { logger } from "@/lib/logger";
 
 /**
  * GET /api/video/search?q=...&maxResults=10
@@ -30,7 +31,7 @@ export async function GET(request: Request) {
 
     return NextResponse.json({ results, query });
   } catch (error) {
-    console.error("GET /api/video/search error:", error);
+    logger.error("GET /api/video/search error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao buscar vídeos" },
       { status: 500 }

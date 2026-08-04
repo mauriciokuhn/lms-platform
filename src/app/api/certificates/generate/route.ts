@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { blockDemoUser } from "@/lib/demo-mode";
 import { notifyUser } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -115,7 +116,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json(certificate, { status: 201 });
   } catch (error) {
-    console.error("POST /api/certificates/generate error:", error);
+    logger.error("POST /api/certificates/generate error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao gerar certificado" }, { status: 500 });
   }
 }

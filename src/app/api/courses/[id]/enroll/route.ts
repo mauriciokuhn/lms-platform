@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { blockDemoUser } from "@/lib/demo-mode";
 import { notifyUser } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function POST(
   request: Request,
@@ -19,6 +20,16 @@ export async function POST(
     if (demoBlocked) return demoBlocked;
 
     const { id: courseId } = await params;
+
+    // Verify the course exists (avoid a raw FK failure -> 500)
+    const course = await db.course.findUnique({
+      where: { id: courseId },
+      select: { id: true, title: true },
+    });
+
+    if (!course) {
+      return NextResponse.json({ error: "Curso não encontrado" }, { status: 404 });
+    }
 
     // Check if already enrolled
     const existing = await db.enrollment.findUnique({
@@ -50,13 +61,13 @@ export async function POST(
     await notifyUser(session.user.id, {
       type: "ENROLLMENT_CONFIRMED",
       title: "Matrícula confirmada! 📚",
-      message: `Você se matriculou em "${enrollment.course.title}". Bons estudos!`,
+      message: `Você se matriculou em "${course.title}". Bons estudos!`,
       link: `/cursos/${courseId}`,
     });
 
     return NextResponse.json(enrollment, { status: 201 });
   } catch (error) {
-    console.error("POST /api/courses/[id]/enroll error:", error);
+    logger.error("POST /api/courses/[id]/enroll error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao realizar matrícula" }, { status: 500 });
   }
 }

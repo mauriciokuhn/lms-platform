@@ -1,0 +1,51 @@
+name: Sanity (fast pre-PR)
+
+# Quick feedback gate on every push to a branch — runs the environment check
+# and the preflight script (prisma client, database URL, tsc, schema, sitemap)
+# WITHOUT the full 4-job CI (lint + typecheck + unit + e2e). main is skipped
+# because ci.yml already covers it on push.
+#
+# NOTE: fork PRs don't fire `push` — they are covered by ci.yml, which also
+# triggers on pull_request.
+on:
+  push:
+    branches-ignore: [main]
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Same env contract as ci.yml — the checks read process.env, so the
+  # canonical AUTH_* names are materialized into a local .env below.
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  NEXTAUTH_URL: "http://localhost:3000"
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
+  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
+
+jobs:
+  sanity:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      # env:check reads the .env file (no .env exists on a fresh runner), so
+      # materialize one from the workflow env block above.
+      - name: Create .env for checks
+        run: |
+          printf 'DATABASE_URL="file:./dev.db"\nAUTH_SECRET="%s"\nAUTH_URL="%s"\nNEXT_PUBLIC_APP_URL="%s"\n' \
+            "$NEXTAUTH_SECRET" "$NEXTAUTH_URL" "$NEXT_PUBLIC_APP_URL" > .env
+      # Neither check needs a pushed schema: env:check is file-only and
+      # preflight warns on the SQLite dev URL without connecting. The full
+      # ci.yml e2e job still runs `prisma db push` + seed.
+      - name: Env sanity
+        run: npm run env:check
+      - name: Preflight
+        run: npm run preflight

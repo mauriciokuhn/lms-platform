@@ -1,8 +1,8 @@
 "use client";
 
 import { useEffect, useState, use } from "react";
-import { useRouter } from "next/navigation";
 import Link from "next/link";
+import { useTranslation } from "@/lib/i18n";
 
 interface Module {
   id: string;
@@ -26,7 +26,7 @@ interface Course {
 
 export default function InstructorPreviewCoursePage({ params }: { params: Promise<{ id: string }> }) {
   const { id } = use(params);
-  const router = useRouter();
+  const { t } = useTranslation();
   const [course, setCourse] = useState<Course | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -51,7 +51,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
 
   if (!course) return (
     <div className="min-h-screen flex items-center justify-center bg-zinc-50 dark:bg-zinc-950">
-      <p className="text-zinc-500">Curso não encontrado</p>
+      <p className="text-zinc-500">{t("preview.notFound")}</p>
     </div>
   );
 
@@ -68,15 +68,15 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
         <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-2">
           <div className="flex items-center gap-2 text-sm text-amber-700 dark:text-amber-300">
             <span>👁</span>
-            <span className="font-semibold">Modo Preview</span>
-            <span className="text-amber-500 dark:text-amber-400">— Visualização de como os alunos verão o curso</span>
+            <span className="font-semibold">{t("preview.mode")}</span>
+            <span className="text-amber-500 dark:text-amber-400">{t("preview.subtitle")}</span>
           </div>
           <div className="flex items-center gap-2">
             <Link
               href={`/instrutor/cursos/${course.id}/editar`}
               className="rounded-lg bg-amber-600 px-3 py-1.5 text-xs font-semibold text-white hover:bg-amber-500"
             >
-              Voltar ao Editor
+              {t("preview.backToEditor")}
             </Link>
           </div>
         </div>
@@ -87,6 +87,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
         <div className="mb-8 overflow-hidden rounded-2xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <div className="aspect-video w-full bg-gradient-to-br from-zinc-800 to-zinc-900 flex items-center justify-center">
             {course.thumbnailUrl ? (
+              // eslint-disable-next-line @next/next/no-img-element -- course thumbnail
               <img src={course.thumbnailUrl} alt={course.title} className="h-full w-full object-cover" />
             ) : (
               <div className="text-center">
@@ -97,7 +98,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                    course.category === "Data Science" ? "📊" :
                    course.category === "Design" ? "🖌️" : "📚"}
                 </span>
-                <p className="mt-2 text-sm text-zinc-400">Preview do Curso</p>
+                <p className="mt-2 text-sm text-zinc-400">{t("preview.coursePreview")}</p>
               </div>
             )}
           </div>
@@ -109,7 +110,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                     {course.category || "Curso"}
                   </span>
                   <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-xs font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
-                    Grátis
+                    {t("course.free")}
                   </span>
                 </div>
                 <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">{course.title}</h1>
@@ -119,14 +120,14 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 6.253v13m0-13C10.832 5.477 9.246 5 7.5 5S4.168 5.477 3 6.253v13C4.168 18.477 5.754 18 7.5 18s3.332.477 4.5 1.253m0-13C13.168 5.477 14.754 5 16.5 5c1.747 0 3.332.477 4.5 1.253v13C19.832 18.477 18.247 18 16.5 18c-1.746 0-3.332.477-4.5 1.253" />
                     </svg>
-                    {course.modules.length} módulos
+                    {course.modules.length} {t("course.modules")}
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
                     </svg>
-                    {totalLessons} aulas
+                    {totalLessons} {t("course.lessons")}
                   </span>
                   <span className="flex items-center gap-1">
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -153,7 +154,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                 disabled
                 className="rounded-xl bg-zinc-900 px-8 py-3 text-sm font-semibold text-white opacity-50 dark:bg-white dark:text-zinc-900"
               >
-                Matricular-se Grátis
+                {t("course.enroll")}
               </button>
             </div>
           </div>
@@ -162,15 +163,15 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
         {/* Course Content */}
         <div className="rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
           <div className="border-b border-zinc-200 px-6 py-4 dark:border-zinc-700">
-            <h2 className="font-semibold text-zinc-900 dark:text-white">Conteúdo do Curso</h2>
-            <p className="text-xs text-zinc-400 mt-1">{course.modules.length} módulos · {totalLessons} aulas</p>
+            <h2 className="font-semibold text-zinc-900 dark:text-white">{t("preview.content")}</h2>
+            <p className="text-xs text-zinc-400 mt-1">{course.modules.length} {t("course.modules")} · {totalLessons} {t("course.lessons")}</p>
           </div>
           <div className="divide-y divide-zinc-100 dark:divide-zinc-800">
             {course.modules.length === 0 ? (
               <div className="p-12 text-center">
-                <p className="text-sm text-zinc-400">Nenhum módulo adicionado ainda.</p>
+                <p className="text-sm text-zinc-400">{t("preview.noModules")}</p>
                 <Link href={`/instrutor/cursos/${course.id}/editar`} className="mt-2 inline-block text-sm font-medium text-amber-600 hover:underline">
-                  Adicionar módulos
+                  {t("preview.addModules")}
                 </Link>
               </div>
             ) : (
@@ -183,7 +184,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                       </span>
                       <div>
                         <p className="text-sm font-medium text-zinc-900 dark:text-white">{mod.title}</p>
-                        <p className="text-xs text-zinc-400">{mod.lessons.length} aulas</p>
+                        <p className="text-xs text-zinc-400">{mod.lessons.length} {t("course.lessons")}</p>
                       </div>
                     </div>
                     <svg className="h-5 w-5 text-zinc-400 transition-transform group-open:rotate-180" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -192,7 +193,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                   </summary>
                   <div className="border-t border-zinc-100 px-6 py-2 dark:border-zinc-800">
                     {mod.lessons.length === 0 ? (
-                      <p className="py-3 text-sm text-zinc-400">Nenhuma aula neste módulo.</p>
+                      <p className="py-3 text-sm text-zinc-400">{t("preview.noLessons")}</p>
                     ) : (
                       mod.lessons.map((lesson, li) => {
                         const contentTypeIcons: Record<string, string> = {
@@ -205,9 +206,9 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
                               <span className="text-sm">{contentTypeIcons[lesson.contentType] || "📹"}</span>
                               <span className="text-sm text-zinc-700 dark:text-zinc-300">{lesson.title}</span>
                               <span className="rounded bg-zinc-100 px-1.5 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
-                                {lesson.contentType === "VIDEO" ? "Vídeo" :
+                                {lesson.contentType === "VIDEO" ? t("preview.video") :
                                  lesson.contentType === "PDF" ? "PDF" :
-                                 lesson.contentType === "TEXT" ? "Texto" : "Link"}
+                                 lesson.contentType === "TEXT" ? t("preview.text") : t("preview.link")}
                               </span>
                             </div>
                             {lesson.duration && (
@@ -235,7 +236,7 @@ export default function InstructorPreviewCoursePage({ params }: { params: Promis
             <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
             </svg>
-            Voltar ao Editor
+            {t("preview.backToEditor")}
           </Link>
         </div>
       </main>

@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { blockDemoUser } from "@/lib/demo-mode";
 import { notifyUser, notifyAdmins } from "@/lib/event-bus";
+import { logger } from "@/lib/logger";
 
 export async function GET(
   _request: Request,
@@ -27,7 +28,7 @@ export async function GET(
 
     return NextResponse.json(progress || { completed: false, watchedSeconds: 0 });
   } catch (error) {
-    console.error("GET /api/lessons/[id]/progress error:", error);
+    logger.error("GET /api/lessons/[id]/progress error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao buscar progresso" }, { status: 500 });
   }
 }
@@ -280,7 +281,7 @@ export async function POST(
 
     return NextResponse.json(progress);
   } catch (error) {
-    console.error("POST /api/lessons/[id]/progress error:", error);
+    logger.error("POST /api/lessons/[id]/progress error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json({ error: "Erro ao salvar progresso" }, { status: 500 });
   }
 }

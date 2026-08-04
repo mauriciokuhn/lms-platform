@@ -220,16 +220,16 @@ export function GamificationWidget() {
     }, 150);
   }, []);
 
-  if (loading || !progress) return null;
-
-  const { xp, streak } = progress;
-
   // Fire confetti when levelUp state becomes true
   useEffect(() => {
     if (levelUp) {
       fireMiniConfetti();
     }
   }, [levelUp, fireMiniConfetti]);
+
+  if (loading || !progress) return null;
+
+  const { xp, streak } = progress;
 
   return (
     <div ref={ref} className="relative">

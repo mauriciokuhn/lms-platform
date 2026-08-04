@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { auth } from "@/lib/auth";
 import { saveSubscription } from "@/lib/push-notifications";
+import { logger } from "@/lib/logger";
 
 export async function POST(request: Request) {
   try {
@@ -23,7 +24,7 @@ export async function POST(request: Request) {
 
     return NextResponse.json({ success: true });
   } catch (error) {
-    console.error("POST /api/push/subscribe error:", error);
+    logger.error("POST /api/push/subscribe error", { error: error instanceof Error ? error.message : String(error) });
     return NextResponse.json(
       { error: "Erro ao salvar inscrição push" },
       { status: 500 }

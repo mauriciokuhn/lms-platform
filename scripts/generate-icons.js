@@ -47,7 +47,7 @@ async function generate() {
       console.log(`  ✅ ${filename} generated`);
     }
     console.log("\n🎉 All icons generated successfully!");
-  } catch (err) {
+  } catch {
     console.log("\n⚠️  sharp not installed. Install it to generate PNG icons:");
     console.log("   npm install sharp");
     console.log("   node scripts/generate-icons.js");

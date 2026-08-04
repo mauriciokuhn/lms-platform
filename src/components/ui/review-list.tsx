@@ -75,6 +75,7 @@ export function ReviewList({ reviews, currentUserId }: ReviewListProps) {
                 {/* Avatar */}
                 <div className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-zinc-200 text-xs font-bold text-zinc-600 dark:bg-zinc-700 dark:text-zinc-300">
                   {review.user.image ? (
+                    // eslint-disable-next-line @next/next/no-img-element -- user avatar
                     <img
                       src={review.user.image}
                       alt={review.user.name || ""}
