@@ -12,7 +12,7 @@ GitHub Actions já incluídos no repositório. O fluxo completo é:
 | Workflow | Quando roda | O que faz |
 | --- | --- | --- |
 | `.github/workflows/sanity.yml` | todo push em branch (exceto `main`) | gate rápido pré-PR: `env:check` + `preflight` (sem a bateria completa do CI) |
-| `.github/workflows/ci.yml` | push no `main` e em toda PR | lint, typecheck + build, validação do schema contra Postgres real, 220 testes unitários (vitest) e 18 testes e2e em bundle de produção |
+| `.github/workflows/ci.yml` | push no `main` e em toda PR | lint, typecheck + build, validação do schema contra Postgres real, 382 testes unitários (vitest) e 18 testes e2e em bundle de produção |
 | `.github/workflows/deploy-preview.yml` | toda PR (aberta/sync/reaberta) | deploy de preview na Vercel + comentário automático no PR com a URL |
 | `.github/workflows/deploy.yml` | push no `main` | deploy de produção na Vercel |
 
@@ -195,3 +195,15 @@ persiste em serverless** (o filesystem é efêmero). Para produção:
 O redirecionamento pós-login é por papel (`src/lib/role-home.ts` + middleware
 em `src/lib/auth.config.ts`), coberto pelos testes e2e em
 `src/tests/e2e/roles.spec.ts`.
+
+---
+
+## 12. Testes (estado atual)
+
+| Camada | Quantidade | Cobre |
+| --- | --- | --- |
+| **Unit (vitest)** | 382 testes / 52 arquivos | lib (email, auth, youtube, upload, db, logger, rate-limit, contexts, event-bus SSE, offline/IndexedDB, push, uploadthing, i18n) e rotas de API (courses, modules/lessons, quizzes, certificates, enrollments, admin, instructor, gamification, reviews, notifications, settings, social, SSE, checkout Stripe, webhook, upload, auth/rate-limit) |
+| **E2E (Playwright)** | 18 testes | login por papel (admin/instrutor/aluno → redirect), catálogo, certificado, segurança/rate-limit — rodados também contra o bundle de produção no CI |
+| **Cobertura geral** | ~21% statements · ~79% branches · ~73% functions | páginas de UI cobertas pelos e2e; módulos de lib/infra cobertos por unit |
+
+Cobertura detalhada: `npx vitest run --coverage`.

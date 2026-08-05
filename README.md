@@ -464,13 +464,19 @@ Use este checklist antes de publicar:
 ## 🧪 Testes
 
 ```bash
-# Testes unitários
+# Testes unitários (Vitest)
 npm run test
 
-# Testes E2E (requer Playwright instalado)
+# Testes E2E (Playwright — requer instalação do browser)
 npx playwright install
 npm run test:e2e
 ```
+
+| Camada | Quantidade |
+| --- | --- |
+| Unit (Vitest) | **382 testes / 52 arquivos** — libs (email, auth, youtube, upload, db, logger, rate-limit, contexts, SSE event bus, offline/IndexedDB, push, uploadthing, i18n) e rotas de API (checkout Stripe, webhook, upload, quizzes, certificados, gamificação, reviews, social, SSE, auth/rate-limit, admin, instructor…)
+| E2E (Playwright) | **18 testes** — login por papel, catálogo, certificado, segurança — rodados também contra o bundle de produção no CI |
+| Cobertura | `npx vitest run --coverage` para o relatório completo |
 
 ---
 
