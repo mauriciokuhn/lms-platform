@@ -21,6 +21,7 @@ const authMock = vi.hoisted(() => ({ auth: vi.fn() }));
 vi.mock("@/lib/auth", () => authMock);
 
 import { GET } from "@/app/api/events/subscribe/route";
+import { notifyUser } from "@/lib/event-bus";
 import { getTestDb, cleanupTestDb, closeTestDb, createTestUser, createMockSession } from "../setup";
 
 const prisma = getTestDb();
@@ -71,5 +72,48 @@ describe("SSE subscribe route", () => {
     const chunk = await readFirstChunk(res.body!);
     expect(chunk).toContain("heartbeat");
     expect(chunk).toContain("connected");
+  });
+
+  it("delivers notifications only to the target user's stream", async () => {
+    const userA = await createTestUser(prisma, { email: "sse-scope-a@test.com" });
+    const userB = await createTestUser(prisma, { email: "sse-scope-b@test.com" });
+
+    authMock.auth.mockResolvedValue(createMockSession({ id: userA.id }));
+    const resA = await GET();
+    const readerA = resA.body!.getReader();
+    await readerA.read(); // consume A's heartbeat
+
+    authMock.auth.mockResolvedValue(createMockSession({ id: userB.id }));
+    const resB = await GET();
+    const readerB = resB.body!.getReader();
+    await readerB.read(); // consume B's heartbeat
+
+    // try/finally guarantees both 30s heartbeat intervals are cleared even
+    // if an assertion fails mid-test — a leaked stream would keep Node alive.
+    try {
+      const payload = await notifyUser(userA.id, {
+        type: "LESSON_COMPLETED",
+        title: "Aula concluída",
+        message: "Bom trabalho!",
+      });
+
+      // User A receives the notification event with the created payload.
+      const { value: valueA } = await readerA.read();
+      const chunkA = new TextDecoder().decode(valueA);
+      expect(chunkA).toContain("notification");
+      expect(chunkA).toContain(payload.id);
+
+      // User B must NOT receive it within a short window. The losing
+      // readerB.read() promise is handled by Promise.race (no unhandled
+      // rejection) and cancelled in finally below.
+      const racedB = await Promise.race([
+        readerB.read().then(({ value }) => (value ? new TextDecoder().decode(value) : null)),
+        new Promise<string | null>((resolve) => setTimeout(() => resolve(null), 250)),
+      ]);
+      expect(racedB).toBeNull();
+    } finally {
+      await readerA.cancel().catch(() => {});
+      await readerB.cancel().catch(() => {});
+    }
   });
 });
