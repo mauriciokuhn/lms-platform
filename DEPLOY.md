@@ -128,12 +128,37 @@ persiste em serverless** (o filesystem é efêmero). Para produção:
 3. Aplique o schema no banco remoto (com o provider em `postgresql`):
    ```bash
    node scripts/switch-provider.js postgresql
-   npx prisma db push          # ou: npx prisma migrate deploy
+   npx prisma migrate deploy  # aplica prisma/migrations (recomendado em produção)
+   # alternativa (sem histórico versionado): npx prisma db push
    ```
 4. Semear os dados iniciais (admin/cursos) contra o banco remoto:
    ```bash
    npm run db:seed
    ```
+
+> **Migrações versionadas:** o diretório `prisma/migrations` contém a
+> migração inicial (`20260805145853_init`, gerada e validada contra um
+> Postgres 16 real em 05/08/2026). Para criar novas migrações ao evoluir o
+> schema (com o provider em `postgresql`):
+>
+> ```bash
+> node scripts/switch-provider.js postgresql
+> DATABASE_URL="postgresql://…" npx prisma migrate dev --name <nome>
+> node scripts/switch-provider.js sqlite && npx prisma generate
+> git checkout prisma/schema.prisma   # remove o diff de formatação do switch
+> ```
+>
+> ⚠️ **Lock file vs schema:** o `prisma/migrations/migration_lock.toml` fixa
+> o provider como `postgresql`, mas o `schema.prisma` commitado é `sqlite`
+> (para dev). **Nunca rode `prisma migrate dev`/`migrate deploy` com o
+> schema em sqlite** — o Prisma recusa por mismatch de provider. Sempre
+> passe pelo `switch-provider postgresql` antes (como no bloco acima). O
+> `db push` não verifica o lock file, então a suíte vitest e o CI
+> (que usam SQLite de teste e `db push`) não são afetados.
+>
+> O CI usa `db push` para validar o schema contra o Postgres do service
+> container. Para produção, `migrate deploy` (bloco acima) é recomendado
+> porque cada alteração de schema fica versionada e revisável na PR.
 5. O CI valida o schema Postgres em toda PR (job `postgres` do `ci.yml`, com
    service container) — se o schema quebrar para Postgres, a PR falha antes
    de chegar à produção.
