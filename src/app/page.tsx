@@ -549,7 +549,7 @@ export default function HomePage() {
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Recursos</h3>
               <ul className="mt-3 space-y-2">
                 <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Videoaulas</span></li>
-                <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Certificados</span></li>
+                <li><Link href="/validar-certificado" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Validar Certificado</Link></li>
                 <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Progresso</span></li>
               </ul>
             </div>
