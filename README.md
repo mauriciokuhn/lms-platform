@@ -490,6 +490,10 @@ Contribuições são bem-vindas! Siga os passos:
 4. Push: `git push origin feature/nova-feature`
 5. Abra um Pull Request
 
+> 🚀 **Primeira publicação?** Veja o [PR.md](PR.md) — guia passo a passo com os
+> comandos exatos para criar o repositório no GitHub, dar push, abrir a PR, o
+> que o CI vai validar e como corrigir se algo falhar.
+
 Veja os templates em `.github/ISSUE_TEMPLATE/` e `.github/PULL_REQUEST_TEMPLATE.md`.
 
 ---
