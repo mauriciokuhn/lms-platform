@@ -12,7 +12,7 @@ GitHub Actions já incluídos no repositório. O fluxo completo é:
 | Workflow | Quando roda | O que faz |
 | --- | --- | --- |
 | `.github/workflows/sanity.yml` | todo push em branch (exceto `main`) | gate rápido pré-PR: `env:check` + `preflight` (sem a bateria completa do CI) |
-| `.github/workflows/ci.yml` | push no `main` e em toda PR | lint, typecheck + build, validação do schema contra Postgres real, 382 testes unitários (vitest) e 18 testes e2e em bundle de produção |
+| `.github/workflows/ci.yml` | push no `main` e em toda PR | lint, typecheck + build, validação do schema contra Postgres real, 408 testes unitários (vitest) e 18 testes e2e em bundle de produção |
 | `.github/workflows/deploy-preview.yml` | toda PR (aberta/sync/reaberta) | deploy de preview na Vercel + comentário automático no PR com a URL |
 | `.github/workflows/deploy.yml` | push no `main` | deploy de produção na Vercel |
 
@@ -138,6 +138,43 @@ persiste em serverless** (o filesystem é efêmero). Para produção:
    service container) — se o schema quebrar para Postgres, a PR falha antes
    de chegar à produção.
 
+### Validar localmente contra um Postgres real (Windows)
+
+Se tiver o PostgreSQL instalado localmente (ex.: via winget), é possível
+reproduzir o fluxo do CI na sua máquina — sem depender de cloud:
+
+```bash
+# 1. Crie um banco de teste
+"C:/Program Files/PostgreSQL/16/bin/psql.exe" -U postgres -h 127.0.0.1 -p 5432 -c "CREATE DATABASE lms_pg_validate"
+
+# 2. Troque o provider e aponte para o banco local
+node scripts/switch-provider.js postgresql
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx prisma db push --skip-generate
+
+# 3. Semeie e consulte via Prisma (prova que o client conecta no Postgres)
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx prisma db seed
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx tsx <script-que-conta-usuarios-e-cursos>
+
+# 4. Volte para SQLite (dev) e remova o banco de teste
+node scripts/switch-provider.js sqlite && npx prisma generate
+"C:/Program Files/PostgreSQL/16/bin/psql.exe" -U postgres -h 127.0.0.1 -p 5432 -c "DROP DATABASE IF EXISTS lms_pg_validate"
+```
+
+> ⚠️ O `psql` pede senha — use `-w` para falhar rápido em vez de travar o
+> terminal. A senha do usuário `postgres` local é a que você definiu na
+> instalação (padrão comum: `postgres`). Nunca commite a senha.
+
+> **Validação executada em 05/08/2026:** `switch-provider postgresql` →
+> `db push` (28 tabelas criadas) → `db seed` → consulta via Prisma
+> (8 usuários, 6 cursos, 6 matrículas, admin confirmado) → voltou para
+> SQLite. Fluxo 100% funcional.
+
+> **Nota:** o `switch-provider` reescreve o bloco de comentário do
+> `datasource` com um banner próprio — o `schema.prisma` fica com diff de
+> formatação após o switch (mesmo voltando ao mesmo provider). Para dev,
+> é inofensivo; para não poluir o commit, rode `git checkout prisma/schema.prisma`
+> depois do ciclo (o conteúdo funcional é idêntico).
+
 ---
 
 ## 7. Fluxo de trabalho do dia a dia
@@ -179,6 +216,8 @@ persiste em serverless** (o filesystem é efêmero). Para produção:
 - [ ] Banco Postgres criado e semeado (build já troca o provider para `postgresql`)
 - [ ] `AUTH_URL` apontando para o domínio de produção
 - [ ] Preview de uma PR testado (login dos 3 papéis, curso, quiz, certificado)
+- [ ] Certificado: QR de verificação + página pública `/validar-certificado` testados
+- [ ] PDF do certificado baixado e conferido (borda dourada, QR, URL selecionável)
 - [ ] `npm run env:check`, `npm run preflight` e `npm run pre-deploy` passando
 - [ ] Produção com `NEXT_PUBLIC_APP_URL` correto e domínio customizado
 
@@ -202,8 +241,8 @@ em `src/lib/auth.config.ts`), coberto pelos testes e2e em
 
 | Camada | Quantidade | Cobre |
 | --- | --- | --- |
-| **Unit (vitest)** | 382 testes / 52 arquivos | lib (email, auth, youtube, upload, db, logger, rate-limit, contexts, event-bus SSE, offline/IndexedDB, push, uploadthing, i18n) e rotas de API (courses, modules/lessons, quizzes, certificates, enrollments, admin, instructor, gamification, reviews, notifications, settings, social, SSE, checkout Stripe, webhook, upload, auth/rate-limit) |
+| **Unit (vitest)** | 408 testes / 56 arquivos | lib (email, auth, youtube, upload, db, logger, rate-limit, contexts, event-bus SSE, offline/IndexedDB, push, uploadthing, i18n, certificate-pdf) e rotas de API (courses, modules/lessons, quizzes, certificates, enrollments, admin, instructor, gamification, reviews, notifications, settings, social, SSE, checkout Stripe, webhook, upload, auth/rate-limit) + páginas de UI (gamification widget, validação de certificado) |
 | **E2E (Playwright)** | 18 testes | login por papel (admin/instrutor/aluno → redirect), catálogo, certificado, segurança/rate-limit — rodados também contra o bundle de produção no CI |
-| **Cobertura geral** | ~21% statements · ~79% branches · ~73% functions | páginas de UI cobertas pelos e2e; módulos de lib/infra cobertos por unit |
+| **Cobertura geral** | ~24% statements · ~80% branches · ~76% functions | páginas de UI cobertas pelos e2e; módulos de lib/infra cobertos por unit |
 
 Cobertura detalhada: `npx vitest run --coverage`.
