@@ -21,7 +21,7 @@ const SETTINGS_DEFAULTS: UserSettingsData = {
 // DND window helper
 // ──────────────────────────────────────────
 
-function isInDNDWindow(settings: UserSettingsData): boolean {
+export function isInDNDWindow(settings: UserSettingsData): boolean {
   if (!settings.doNotDisturb || !settings.dndStartTime || !settings.dndEndTime) {
     return false;
   }
@@ -36,6 +36,13 @@ function isInDNDWindow(settings: UserSettingsData): boolean {
 
   const startMinutes = parseTime(settings.dndStartTime);
   const endMinutes = parseTime(settings.dndEndTime);
+
+  // Malformed times must never silently activate DND — without this guard,
+  // an invalid start (NaN) falls into the overnight branch below and can
+  // report the window as active until the (valid) end time.
+  if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
+    return false;
+  }
 
   if (startMinutes < endMinutes) {
     return currentMinutes >= startMinutes && currentMinutes < endMinutes;
