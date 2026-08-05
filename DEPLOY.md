@@ -153,12 +153,15 @@ persiste em serverless** (o filesystem é efêmero). Para produção:
 > (para dev). **Nunca rode `prisma migrate dev`/`migrate deploy` com o
 > schema em sqlite** — o Prisma recusa por mismatch de provider. Sempre
 > passe pelo `switch-provider postgresql` antes (como no bloco acima). O
-> `db push` não verifica o lock file, então a suíte vitest e o CI
-> (que usam SQLite de teste e `db push`) não são afetados.
+> `db push` não verifica o lock file, então a suíte vitest (SQLite de
+> teste) não é afetada.
 >
-> O CI usa `db push` para validar o schema contra o Postgres do service
-> container. Para produção, `migrate deploy` (bloco acima) é recomendado
-> porque cada alteração de schema fica versionada e revisável na PR.
+> O CI valida o schema com `migrate deploy` contra o Postgres do service
+> container (job `postgres` do `ci.yml`) — as migrações versionadas são
+> aplicadas de verdade e revisadas em toda PR antes de chegarem à produção.
+> Um passo extra `migrate diff --exit-code` falha a PR se o `schema.prisma`
+> for editado sem criar a migração correspondente (gap que o `db push`
+> escondia).
 5. O CI valida o schema Postgres em toda PR (job `postgres` do `ci.yml`, com
    service container) — se o schema quebrar para Postgres, a PR falha antes
    de chegar à produção.
@@ -172,9 +175,10 @@ reproduzir o fluxo do CI na sua máquina — sem depender de cloud:
 # 1. Crie um banco de teste
 "C:/Program Files/PostgreSQL/16/bin/psql.exe" -U postgres -h 127.0.0.1 -p 5432 -c "CREATE DATABASE lms_pg_validate"
 
-# 2. Troque o provider e aponte para o banco local
+# 2. Troque o provider e aponte para o banco local (mesmo fluxo do CI)
 node scripts/switch-provider.js postgresql
-DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx prisma db push --skip-generate
+DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx prisma migrate deploy
+# alternativa (sem histórico versionado): npx prisma db push --skip-generate
 
 # 3. Semeie e consulte via Prisma (prova que o client conecta no Postgres)
 DATABASE_URL="postgresql://postgres:postgres@127.0.0.1:5432/lms_pg_validate" npx prisma db seed
@@ -189,10 +193,12 @@ node scripts/switch-provider.js sqlite && npx prisma generate
 > terminal. A senha do usuário `postgres` local é a que você definiu na
 > instalação (padrão comum: `postgres`). Nunca commite a senha.
 
-> **Validação executada em 05/08/2026:** `switch-provider postgresql` →
-> `db push` (28 tabelas criadas) → `db seed` → consulta via Prisma
-> (8 usuários, 6 cursos, 6 matrículas, admin confirmado) → voltou para
-> SQLite. Fluxo 100% funcional.
+> **Validações executadas em 05/08/2026:** (a) `switch-provider postgresql`
+> → `db push` (28 tabelas) → seed → consulta via Prisma (8 usuários, 6
+> cursos, 6 matrículas); (b) `migrate dev --name init` gerou
+> `prisma/migrations/20260805145853_init` aplicado num Postgres 16 real
+> (29 tabelas incl. `_prisma_migrations`) → seed → consulta via Prisma
+> (admin confirmado). Fluxos 100% funcionais.
 
 > **Nota:** o `switch-provider` reescreve o bloco de comentário do
 > `datasource` com um banner próprio — o `schema.prisma` fica com diff de

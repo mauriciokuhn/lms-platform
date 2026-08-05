@@ -14,7 +14,7 @@ concurrency:
 env:
   # The Prisma schema hardcodes `url = "file:./dev.db"` (SQLite) and the
   # vitest suite bootstraps its own isolated SQLite databases, so no
-  # DATABASE_URL is needed here.
+  # DATABASE_URL is needed here (the `postgres` job sets its own below).
   NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
   NEXTAUTH_URL: "http://localhost:3000"
   # Google OAuth is only exercised at runtime (e2e uses credentials login),
@@ -45,9 +45,10 @@ jobs:
       # package.json lint script already carries --max-warnings 0.
       - run: npm run lint
 
-  # Validate the schema against a real PostgreSQL instance: switches the
-  # datasource provider, generates the client, pushes the schema and seeds.
-  # Docker isn't available on the dev machine, so this runs only in CI.
+  # Validate the versioned migrations against a real PostgreSQL instance:
+  # switches the datasource provider, generates the client, applies the
+  # committed migrations with `migrate deploy` and seeds. Docker isn't
+  # available on the dev machine, so this runs only in CI.
   postgres:
     runs-on: ubuntu-latest
     services:
@@ -74,8 +75,13 @@ jobs:
           cache: "npm"
       - run: npm ci
       - run: node scripts/switch-provider.js postgresql
+      # Fail the PR if schema.prisma was edited without a matching
+      # migration (migrate deploy would not detect that drift). The
+      # shadow-database-url lets Prisma replay the migrations in a temp DB
+      # to compute the diff (same server, auto-created/dropped).
+      - run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
       - run: npx prisma generate
-      - run: npx prisma db push
+      - run: npx prisma migrate deploy
       - run: npx prisma db seed
       - name: Verify db.ts resolves Postgres via env
         run: npx tsc --noEmit
