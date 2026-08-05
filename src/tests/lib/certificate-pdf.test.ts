@@ -17,6 +17,7 @@ const docMock = vi.hoisted(() => ({
   setTextColor: vi.fn(),
   setFont: vi.fn(),
   setFontSize: vi.fn(),
+  setProperties: vi.fn(),
   text: vi.fn(),
   line: vi.fn(),
   addImage: vi.fn(),
@@ -84,6 +85,25 @@ describe("generateCertificatePdf", () => {
 
     // gold frame is drawn
     expect(docMock.rect).toHaveBeenCalled();
+  });
+
+  it("sets document metadata for indexing", async () => {
+    await generateCertificatePdf(DATA);
+
+    expect(docMock.setProperties).toHaveBeenCalledWith({
+      title: "Certificado — React do Zero ao Avançado",
+      subject: "Certificado de conclusão de curso",
+      author: "Maria Silva",
+      keywords: expect.stringContaining("CERT-ABC-123"),
+      creator: "LMS Platform",
+    });
+  });
+
+  it("writes the verification URL as selectable text", async () => {
+    await generateCertificatePdf(DATA);
+
+    const texts = docMock.text.mock.calls.map((c) => c[0]);
+    expect(texts).toContain(DATA.verificationUrl);
   });
 
   it("embeds a QR code pointing to the verification URL", async () => {

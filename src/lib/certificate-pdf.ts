@@ -37,6 +37,15 @@ export async function generateCertificatePdf(
 
   const centerX = PAGE_W / 2;
 
+  // ── Document metadata (indexable/searchable in PDF readers) ──
+  doc.setProperties({
+    title: `Certificado — ${data.courseTitle}`,
+    subject: "Certificado de conclusão de curso",
+    author: data.studentName,
+    keywords: `certificado, conclusão, ${data.courseTitle}, ${data.code}`,
+    creator: "LMS Platform",
+  });
+
   // ── Border frame (amber, like the on-screen certificate) ──
   doc.setDrawColor(251, 191, 36); // amber-400
   doc.setLineWidth(3);
@@ -146,6 +155,12 @@ export async function generateCertificatePdf(
     // QR generation failed (e.g. no canvas support) — certificate is still valid.
     qrIncluded = false;
   }
+
+  // ── Verification URL as selectable text (fallback to the QR) ──
+  doc.setFont("helvetica", "normal");
+  doc.setFontSize(8);
+  doc.setTextColor(161, 161, 170); // zinc-400
+  doc.text(data.verificationUrl, 14, PAGE_H - 14);
 
   const fileName = sanitizeFileName(data.code);
   doc.save(fileName);
