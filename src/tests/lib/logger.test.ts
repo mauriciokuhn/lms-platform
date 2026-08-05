@@ -111,6 +111,35 @@ describe("logger", () => {
     expect(raw).toContain("an***@example.org");
   });
 
+  it("masks emails with a single-character prefix as ***@***", () => {
+    logger.info("invite", { email: "a@b.com" });
+    const raw = lastCallArgs(consoleLog);
+    expect(raw).not.toContain("a@b.com");
+    expect(raw).toContain("***@***");
+  });
+
+  it("redacts non-string sensitive values with [REDACTED]", () => {
+    logger.info("auth", { password: 12345, token: null });
+    const raw = lastCallArgs(consoleLog);
+    expect(raw).not.toContain("12345");
+    expect(raw).toContain("[REDACTED]");
+  });
+
+  it("redacts exactly-8-char sensitive values with ***", () => {
+    logger.info("auth", { token: "abcdefgh" });
+    const raw = lastCallArgs(consoleLog);
+    expect(raw).not.toContain("abcdefgh");
+    expect(raw).toContain("***");
+  });
+
+  it("matches sensitive keys case-insensitively", () => {
+    logger.info("auth", { Password: "SuperSecret99", ApiKey: "key-1234" });
+    const raw = lastCallArgs(consoleLog);
+    expect(raw).not.toContain("SuperSecret99");
+    expect(raw).not.toContain("key-1234");
+    expect(raw).toContain("[REDACTED]");
+  });
+
   it("redacts password-reset links", () => {
     logger.info("mail", {
       link: "https://lms.app/redefinir-senha/1a2b3c4d5e6f7a8b9c0d",
