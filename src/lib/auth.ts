@@ -12,6 +12,10 @@ const loginSchema = z.object({
 });
 
 export const { handlers, signIn, signOut, auth } = NextAuth({
+  // Required in production (CI, Vercel, self-host): the request host is
+  // otherwise treated as untrusted whenever AUTH_URL/NEXTAUTH_URL is set,
+  // which makes every /api/auth/* route return 500 (UntrustedHost).
+  trustHost: true,
   providers: [
     Google({
       clientId: process.env.AUTH_GOOGLE_ID,

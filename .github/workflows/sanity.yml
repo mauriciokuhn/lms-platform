@@ -21,6 +21,9 @@ env:
   # canonical AUTH_* names are materialized into a local .env below.
   NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
   NEXTAUTH_URL: "http://localhost:3000"
+  # NextAuth v5 canonical names (see ci.yml for the reason).
+  AUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  AUTH_URL: "http://localhost:3000"
   NEXT_PUBLIC_APP_URL: "http://localhost:3000"
   GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
   GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}

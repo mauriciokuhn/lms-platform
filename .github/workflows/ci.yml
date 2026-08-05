@@ -17,6 +17,11 @@ env:
   # DATABASE_URL is needed here (the `postgres` job sets its own below).
   NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
   NEXTAUTH_URL: "http://localhost:3000"
+  # NextAuth v5 canonical names — the auth config reads AUTH_*; the legacy
+  # NEXTAUTH_* aliases are kept for compatibility. Without AUTH_URL the
+  # host is untrusted in production (UntrustedHost -> 500 on /api/auth/*).
+  AUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  AUTH_URL: "http://localhost:3000"
   # Google OAuth is only exercised at runtime (e2e uses credentials login),
   # but the auth config reads these env vars at build time.
   GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
@@ -76,10 +81,20 @@ jobs:
       - run: npm ci
       - run: node scripts/switch-provider.js postgresql
       # Fail the PR if schema.prisma was edited without a matching
-      # migration (migrate deploy would not detect that drift). The
-      # shadow-database-url lets Prisma replay the migrations in a temp DB
-      # to compute the diff (same server, auto-created/dropped).
-      - run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "$DATABASE_URL" --exit-code
+      # migration (migrate deploy would not detect that drift). The drift
+      # check replays the migrations in a dedicated shadow DB; it must
+      # exist beforehand (Prisma does not auto-create it) and must be a
+      # SEPARATE database from $DATABASE_URL, otherwise migrate deploy
+      # fails with P3005 (schema not empty).
+      - name: Create shadow database for drift check
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE lms_shadow"
+      # Shadow DB must be a SEPARATE database: pointing it at $DATABASE_URL
+      # leaves the replayed migration's tables in the real `lms` DB, which
+      # then makes `migrate deploy` fail with P3005 (schema not empty).
+      - run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "postgresql://postgres:postgres@localhost:5432/lms_shadow" --exit-code
       - run: npx prisma generate
       - run: npx prisma migrate deploy
       - run: npx prisma db seed
