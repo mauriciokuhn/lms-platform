@@ -27,6 +27,9 @@ function openDB(): Promise<IDBDatabase> {
           keyPath: "lessonId",
         });
         store.createIndex("userId", "userId", { unique: false });
+        // NOTE: kept for schema stability — booleans are not valid IndexedDB
+        // keys, so this index is never populated (getUnsyncedProgress filters
+        // in memory). Do not try to query it.
         store.createIndex("synced", "synced", { unique: false });
       }
 
@@ -91,7 +94,7 @@ async function getByIndex<T>(
   });
 }
 
-async function remove(storeName: string, key: string): Promise<void> {
+async function remove(storeName: string, key: string | number): Promise<void> {
   const db = await openDB();
   return new Promise((resolve, reject) => {
     const tx = db.transaction(storeName, "readwrite");
@@ -127,7 +130,11 @@ export async function getOfflineProgress(
 }
 
 export async function getUnsyncedProgress(): Promise<OfflineProgress[]> {
-  return getByIndex<OfflineProgress>("progress", "synced", "false");
+  // Booleans are NOT valid IndexedDB keys, so the "synced" index never
+  // contained rows — querying it (with "false" or false) silently returned
+  // nothing. Filter in memory instead; progress rows are small.
+  const all = await getAll<OfflineProgress>("progress");
+  return all.filter((p) => !p.synced);
 }
 
 export async function markProgressSynced(lessonId: string) {
@@ -166,7 +173,9 @@ export async function getPendingMutations(): Promise<QueuedMutation[]> {
 }
 
 export async function dequeueMutation(id: number) {
-  await remove("mutationQueue", String(id));
+  // The queue's keyPath is `id` (autoIncrement) — keys are NUMBERS. Passing
+  // a string here silently matched nothing, so dequeued mutations stayed.
+  await remove("mutationQueue", id);
 }
 
 // ──────────────────────────────────────────
