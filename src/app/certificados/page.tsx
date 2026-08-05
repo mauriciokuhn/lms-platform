@@ -5,6 +5,7 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GamificationWidget } from "@/components/ui/gamification-display";
+import { generateCertificatePdf } from "@/lib/certificate-pdf";
 
 interface Certificate {
   id: string;
@@ -52,6 +53,22 @@ export default function CertificatesPage() {
     window.print();
   }
 
+  async function handleDownloadPdf() {
+    if (!selectedCert) return;
+    const studentName = session?.user?.name || session?.user?.email || "Aluno";
+    try {
+      await generateCertificatePdf({
+        studentName,
+        courseTitle: selectedCert.course.title,
+        code: selectedCert.certificateCode,
+        issuedAtFormatted: selectedCert.issuedAtFormatted,
+        verificationUrl: `${window.location.origin}/certificados/${selectedCert.certificateCode}`,
+      });
+    } catch (err) {
+      console.error("Error generating certificate PDF:", err);
+    }
+  }
+
   return (
     <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 print:hidden">
@@ -62,15 +79,26 @@ export default function CertificatesPage() {
           <div className="flex items-center gap-2">
             <GamificationWidget />
             {selectedCert && (
-              <button
-                onClick={handlePrint}
-                className="flex items-center gap-2 rounded-lg bg-zinc-900 dark:bg-white px-4 py-2 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
-              >
-                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
-                </svg>
-                Imprimir / Salvar PDF
-              </button>
+              <>
+                <button
+                  onClick={handleDownloadPdf}
+                  className="flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white hover:bg-amber-600"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+                  </svg>
+                  Baixar PDF
+                </button>
+                <button
+                  onClick={handlePrint}
+                  className="flex items-center gap-2 rounded-lg bg-zinc-900 dark:bg-white px-4 py-2 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
+                >
+                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17 17h2a2 2 0 002-2v-4a2 2 0 00-2-2H5a2 2 0 00-2 2v4a2 2 0 002 2h2m2 4h6a2 2 0 002-2v-4a2 2 0 00-2-2H9a2 2 0 00-2 2v4a2 2 0 002 2zm8-12V5a2 2 0 00-2-2H9a2 2 0 00-2 2v4h10z" />
+                  </svg>
+                  Imprimir / Salvar PDF
+                </button>
+              </>
             )}
           </div>
         </div>

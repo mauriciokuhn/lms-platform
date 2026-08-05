@@ -49,7 +49,7 @@ function RecommendationsSection() {
 
   return (
     <section className="mb-8">
-      <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Recomendados para Voce</h3>
+      <h3 className="mb-4 text-lg font-semibold text-zinc-900 dark:text-white">Recomendados para Você</h3>
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
         {recommendations.map((course) => (
           <Link
@@ -73,7 +73,7 @@ function RecommendationsSection() {
             </p>
             <div className="mt-3 flex items-center justify-between text-xs text-zinc-400 dark:text-zinc-500">
               <span>{course.studentsCount} alunos</span>
-              <span>{course.modulesCount} modulos</span>
+              <span>{course.modulesCount} módulos</span>
             </div>
             <div className="mt-2 rounded-lg bg-zinc-50 px-2 py-1 text-center text-[10px] font-medium text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
               {course.reason}
@@ -165,14 +165,14 @@ export default function DashboardPage() {
         ) : (
           <>
             <div className="mb-8">
-              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Ola, {session.user.name || "Aluno"}!</h2>
+              <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Olá, {session.user.name || "Aluno"}!</h2>
               <p className="mt-1 text-zinc-500 dark:text-zinc-400">Continue seus estudos de onde parou.</p>
             </div>
 
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
                 { label: "Cursos Ativos", value: activeEnrollments.length },
-                { label: "Concluidos", value: completedEnrollments.length },
+                { label: "Concluídos", value: completedEnrollments.length },
                 { label: "Aulas Completas", value: totalCompletedLessons },
                 { label: "Certificados", value: certificatesCount },
               ].map((stat) => (
@@ -192,7 +192,7 @@ export default function DashboardPage() {
                 <div className="mt-3 h-3 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
                   <div className="h-full rounded-full bg-gradient-to-r from-zinc-700 to-zinc-900 transition-all duration-500 dark:from-zinc-500 dark:to-zinc-300" style={{ width: `${overallPercentage}%` }} />
                 </div>
-                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{totalCompletedLessons} de {totalLessons} aulas concluidas</p>
+                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{totalCompletedLessons} de {totalLessons} aulas concluídas</p>
               </div>
             )}
 
@@ -247,7 +247,7 @@ export default function DashboardPage() {
                   </div>
                 </div>
                 <h3 className="text-lg font-semibold text-zinc-900 dark:text-white">Nenhum curso ainda</h3>
-                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Matricule-se em um curso para comecar.</p>
+                <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Matricule-se em um curso para começar.</p>
                 <Link href="/cursos" className="mt-6 inline-flex items-center gap-2 rounded-lg bg-zinc-900 px-6 py-3 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600">
                   Explorar Cursos
                   <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">

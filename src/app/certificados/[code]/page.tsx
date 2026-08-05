@@ -3,6 +3,7 @@
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
 import { showSuccess } from "@/components/ui/toast-utils";
+import { generateCertificatePdf } from "@/lib/certificate-pdf";
 
 interface CertificateData {
   valid: boolean;
@@ -75,6 +76,20 @@ export default function PublicCertificatePage({
 
   const cert = data.certificate!;
 
+  async function handleDownloadPdf() {
+    try {
+      await generateCertificatePdf({
+        studentName: cert.studentName,
+        courseTitle: cert.courseTitle,
+        code: cert.code,
+        issuedAtFormatted: cert.issuedAtFormatted,
+        verificationUrl: window.location.href,
+      });
+    } catch (err) {
+      console.error("Error generating certificate PDF:", err);
+    }
+  }
+
   return (
     <div className="flex min-h-screen items-center justify-center bg-zinc-50 p-4 dark:bg-zinc-950">
       <div className="w-full max-w-2xl">
@@ -137,6 +152,16 @@ export default function PublicCertificatePage({
 
         {/* Share Actions */}
         <div className="mt-6 flex flex-wrap items-center justify-center gap-3">
+          <button
+            onClick={handleDownloadPdf}
+            className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2.5 text-sm font-medium text-white transition hover:bg-amber-600"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 16v1a3 3 0 003 3h10a3 3 0 003-3v-1m-4-4l-4 4m0 0l-4-4m4 4V4" />
+            </svg>
+            Baixar PDF
+          </button>
+
           <button
             onClick={() => window.print()}
             className="inline-flex items-center gap-2 rounded-lg border border-zinc-300 bg-white px-4 py-2.5 text-sm font-medium text-zinc-700 transition hover:bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-900 dark:text-zinc-300 dark:hover:bg-zinc-800"
