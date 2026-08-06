@@ -2,8 +2,13 @@
 // learn more about it in the docs: https://pris.ly/d/prisma-schema
 
 generator client {
-  provider = "prisma-client"
-  output   = "../src/generated/prisma"
+  // prisma-client-js: generates to the DEFAULT output location
+  // (node_modules/.prisma/client) — the exact path Vercel's build system
+  // special-cases so the native Query Engine binaries are always shipped
+  // inside every serverless function, and what "@prisma/client" re-exports.
+  provider = "prisma-client-js"
+  // Builds may run on GitHub Actions (debian) while Vercel runs on rhel —
+  // ship both engines so the Query Engine is always available at runtime.
   binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
