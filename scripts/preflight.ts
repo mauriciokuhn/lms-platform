@@ -90,14 +90,14 @@ function heading(text: string) {
 // ─── Checks ──────────────────────────────
 
 async function checkPrismaClient() {
-  const clientPath = join(cwd(), "src", "generated", "prisma", "client.ts");
+  const clientPath = join(cwd(), "node_modules", ".prisma", "client", "client.ts");
   if (existsSync(clientPath)) {
-    ok("Prisma Client", "Generated at src/generated/prisma/");
+    ok("Prisma Client", "Generated at node_modules/.prisma/client/");
   } else {
     // Try index.js as fallback
-    const indexPath = join(cwd(), "src", "generated", "prisma", "index.js");
+    const indexPath = join(cwd(), "node_modules", ".prisma", "client", "default.js");
     if (existsSync(indexPath)) {
-      ok("Prisma Client", "Generated at src/generated/prisma/");
+      ok("Prisma Client", "Generated at node_modules/.prisma/client/");
     } else {
       fail("Prisma Client", "Not generated. Run: npx prisma generate");
     }
@@ -113,7 +113,7 @@ async function checkDatabase() {
   } else if (dbUrl.startsWith("postgresql://") || dbUrl.startsWith("postgres://")) {
     try {
       // Dynamic import - path relative to scripts/ directory
-      const prismaModule = await import("../src/generated/prisma/client");
+      const prismaModule = await import("@prisma/client");
       const prisma = new prismaModule.PrismaClient();
       await prisma.$connect();
       ok("PostgreSQL", "Connected successfully");
