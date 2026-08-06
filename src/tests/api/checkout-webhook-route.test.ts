@@ -7,7 +7,7 @@
  * Stripe and @/lib/db are mocked; DB writes land in the isolated test db.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 const dbHolder = vi.hoisted(() => ({ prisma: null as PrismaClient | null }));
 vi.mock("@/lib/db", () => ({
