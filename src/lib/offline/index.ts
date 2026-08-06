@@ -1,0 +1,270 @@
+/**
+ * Offline Mode — IndexedDB Storage
+ *
+ * Provides offline-first data access:
+ * - Stores lesson progress in IndexedDB
+ * - Queues mutations when offline
+ * - Syncs when back online via Background Sync API
+ */
+
+const DB_NAME = "lms-offline";
+const DB_VERSION = 1;
+
+// ──────────────────────────────────────────
+// Database initialization
+// ──────────────────────────────────────────
+
+function openDB(): Promise<IDBDatabase> {
+  return new Promise((resolve, reject) => {
+    const request = indexedDB.open(DB_NAME, DB_VERSION);
+
+    request.onupgradeneeded = (event) => {
+      const db = (event.target as IDBOpenDBRequest).result;
+
+      // Progress store — track watched seconds even offline
+      if (!db.objectStoreNames.contains("progress")) {
+        const store = db.createObjectStore("progress", {
+          keyPath: "lessonId",
+        });
+        store.createIndex("userId", "userId", { unique: false });
+        // NOTE: kept for schema stability — booleans are not valid IndexedDB
+        // keys, so this index is never populated (getUnsyncedProgress filters
+        // in memory). Do not try to query it.
+        store.createIndex("synced", "synced", { unique: false });
+      }
+
+      // Mutation queue — actions performed while offline
+      if (!db.objectStoreNames.contains("mutationQueue")) {
+        const store = db.createObjectStore("mutationQueue", {
+          keyPath: "id",
+          autoIncrement: true,
+        });
+        store.createIndex("type", "type", { unique: false });
+      }
+
+      // Cached courses — full course data for offline browsing
+      if (!db.objectStoreNames.contains("cachedCourses")) {
+        const store = db.createObjectStore("cachedCourses", {
+          keyPath: "id",
+        });
+        store.createIndex("title", "title", { unique: false });
+      }
+    };
+
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+// ──────────────────────────────────────────
+// Generic CRUD helpers
+// ──────────────────────────────────────────
+
+async function put<T>(storeName: string, data: T): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).put(data);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+async function getAll<T>(storeName: string): Promise<T[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const request = tx.objectStore(storeName).getAll();
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function getByIndex<T>(
+  storeName: string,
+  indexName: string,
+  value: string
+): Promise<T[]> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readonly");
+    const request = tx.objectStore(storeName).index(indexName).getAll(value);
+    request.onsuccess = () => resolve(request.result);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+async function remove(storeName: string, key: string | number): Promise<void> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction(storeName, "readwrite");
+    tx.objectStore(storeName).delete(key);
+    tx.oncomplete = () => resolve();
+    tx.onerror = () => reject(tx.error);
+  });
+}
+
+// ──────────────────────────────────────────
+// Public API — Lesson Progress
+// ──────────────────────────────────────────
+
+export interface OfflineProgress {
+  lessonId: string;
+  userId: string;
+  watchedSeconds: number;
+  completed: boolean;
+  lastAccessedAt: string;
+  synced: boolean;
+}
+
+export async function saveProgressOffline(progress: OfflineProgress) {
+  await put("progress", { ...progress, synced: false });
+  // Register background sync if available
+  registerSync("sync-progress");
+}
+
+export async function getOfflineProgress(
+  userId: string
+): Promise<OfflineProgress[]> {
+  return getByIndex<OfflineProgress>("progress", "userId", userId);
+}
+
+export async function getUnsyncedProgress(): Promise<OfflineProgress[]> {
+  // Booleans are NOT valid IndexedDB keys, so the "synced" index never
+  // contained rows — querying it (with "false" or false) silently returned
+  // nothing. Filter in memory instead; progress rows are small.
+  const all = await getAll<OfflineProgress>("progress");
+  return all.filter((p) => !p.synced);
+}
+
+export async function markProgressSynced(lessonId: string) {
+  const items = await getAll<OfflineProgress>("progress");
+  const item = items.find((p) => p.lessonId === lessonId);
+  if (item) {
+    await put("progress", { ...item, synced: true });
+  }
+}
+
+// ──────────────────────────────────────────
+// Public API — Mutation Queue
+// ──────────────────────────────────────────
+
+interface QueuedMutation {
+  id?: number;
+  type: "ENROLL" | "COMPLETE_LESSON" | "SUBMIT_QUIZ" | "REVIEW";
+  payload: unknown;
+  createdAt: string;
+}
+
+export async function enqueueMutation(
+  type: QueuedMutation["type"],
+  payload: unknown
+) {
+  await put("mutationQueue", {
+    type,
+    payload,
+    createdAt: new Date().toISOString(),
+  });
+  registerSync("sync-mutations");
+}
+
+export async function getPendingMutations(): Promise<QueuedMutation[]> {
+  return getAll<QueuedMutation>("mutationQueue");
+}
+
+export async function dequeueMutation(id: number) {
+  // The queue's keyPath is `id` (autoIncrement) — keys are NUMBERS. Passing
+  // a string here silently matched nothing, so dequeued mutations stayed.
+  await remove("mutationQueue", id);
+}
+
+// ──────────────────────────────────────────
+// Public API — Course Cache
+// ──────────────────────────────────────────
+
+export interface CachedCourse {
+  id: string;
+  title: string;
+  description: string;
+  category: string | null;
+  modules: unknown[];
+  cachedAt: string;
+}
+
+export async function cacheCourse(course: CachedCourse) {
+  await put("cachedCourses", {
+    ...course,
+    cachedAt: new Date().toISOString(),
+  });
+}
+
+export async function getCachedCourse(
+  id: string
+): Promise<CachedCourse | null> {
+  const db = await openDB();
+  return new Promise((resolve, reject) => {
+    const tx = db.transaction("cachedCourses", "readonly");
+    const request = tx.objectStore("cachedCourses").get(id);
+    request.onsuccess = () => resolve(request.result || null);
+    request.onerror = () => reject(request.error);
+  });
+}
+
+export async function getCachedCourses(): Promise<CachedCourse[]> {
+  return getAll<CachedCourse>("cachedCourses");
+}
+
+// ──────────────────────────────────────────
+// Background Sync
+// ──────────────────────────────────────────
+
+interface SyncServiceWorkerRegistration extends ServiceWorkerRegistration {
+  sync: { register: (tag: string) => Promise<void> };
+}
+
+async function registerSync(tag: string) {
+  const sw = navigator.serviceWorker as unknown as { sync?: { register: (tag: string) => Promise<void> } };
+  if ("serviceWorker" in navigator && sw.sync) {
+    try {
+      const registration = (await navigator.serviceWorker.ready) as SyncServiceWorkerRegistration;
+      await registration.sync.register(tag);
+      console.log(`✅ Background Sync registered: ${tag}`);
+    } catch (err) {
+      console.log("⚠️ Background Sync not available:", err);
+    }
+  }
+}
+
+// ──────────────────────────────────────────
+// Sync pending mutations when back online
+// ──────────────────────────────────────────
+
+export async function syncPendingMutations(): Promise<{
+  synced: number;
+  failed: number;
+}> {
+  const mutations = await getPendingMutations();
+  let synced = 0;
+  let failed = 0;
+
+  for (const mutation of mutations) {
+    try {
+      const res = await fetch("/api/offline/sync", {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify(mutation),
+      });
+
+      if (res.ok) {
+        await dequeueMutation(mutation.id!);
+        synced++;
+      } else {
+        failed++;
+      }
+    } catch {
+      failed++;
+    }
+  }
+
+  return { synced, failed };
+}

@@ -1,0 +1,158 @@
+"use client";
+
+import { createContext, useContext, useEffect, useState, useCallback, type ReactNode } from "react";
+import { useSession } from "next-auth/react";
+import type { UserSettingsData } from "@/app/api/settings/route";
+
+// ──────────────────────────────────────────
+// Defaults
+// ──────────────────────────────────────────
+
+const SETTINGS_DEFAULTS: UserSettingsData = {
+  soundEnabled: true,
+  soundTone: "CHIME",
+  vibrationEnabled: true,
+  doNotDisturb: false,
+  dndStartTime: null,
+  dndEndTime: null,
+};
+
+// ──────────────────────────────────────────
+// DND window helper
+// ──────────────────────────────────────────
+
+export function isInDNDWindow(settings: UserSettingsData): boolean {
+  if (!settings.doNotDisturb || !settings.dndStartTime || !settings.dndEndTime) {
+    return false;
+  }
+
+  const now = new Date();
+  const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+  const parseTime = (time: string): number => {
+    const [h, m] = time.split(":").map(Number);
+    return h * 60 + m;
+  };
+
+  const startMinutes = parseTime(settings.dndStartTime);
+  const endMinutes = parseTime(settings.dndEndTime);
+
+  // Malformed times must never silently activate DND — without this guard,
+  // an invalid start (NaN) falls into the overnight branch below and can
+  // report the window as active until the (valid) end time.
+  if (Number.isNaN(startMinutes) || Number.isNaN(endMinutes)) {
+    return false;
+  }
+
+  if (startMinutes < endMinutes) {
+    return currentMinutes >= startMinutes && currentMinutes < endMinutes;
+  } else {
+    return currentMinutes >= startMinutes || currentMinutes < endMinutes;
+  }
+}
+
+// ──────────────────────────────────────────
+// Context type
+// ──────────────────────────────────────────
+
+export interface SettingsContextValue {
+  settings: UserSettingsData;
+  loading: boolean;
+  updateSettings: (partial: Partial<UserSettingsData>) => Promise<boolean>;
+  isDNDActive: boolean;
+  isSoundEnabled: boolean;
+  isVibrationEnabled: boolean;
+}
+
+const SettingsContext = createContext<SettingsContextValue | null>(null);
+
+// ──────────────────────────────────────────
+// Provider
+// ──────────────────────────────────────────
+
+export function SettingsProvider({ children }: { children: ReactNode }) {
+  const { data: session } = useSession();
+  const [settings, setSettings] = useState<UserSettingsData>(SETTINGS_DEFAULTS);
+  const [loading, setLoading] = useState(true);
+
+  const fetchSettings = useCallback(async () => {
+    try {
+      const res = await fetch("/api/settings");
+      if (res.ok) {
+        const data = await res.json();
+        setSettings(data);
+      }
+    } catch {
+      // Use defaults
+    } finally {
+      setLoading(false);
+    }
+  }, []);
+
+  useEffect(() => {
+    if (!session?.user) return;
+    (async () => {
+      await fetchSettings();
+    })();
+  }, [fetchSettings, session?.user]);
+
+  const updateSettings = useCallback(
+    async (partial: Partial<UserSettingsData>): Promise<boolean> => {
+      try {
+        const res = await fetch("/api/settings", {
+          method: "PATCH",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(partial),
+        });
+        if (res.ok) {
+          const data = await res.json();
+          setSettings(data);
+          return true;
+        }
+        return false;
+      } catch {
+        return false;
+      }
+    },
+    []
+  );
+
+  // Reset to defaults during render when the user signs out (avoids setState-in-effect)
+  if (!session?.user && (loading || settings !== SETTINGS_DEFAULTS)) {
+    setSettings(SETTINGS_DEFAULTS);
+    setLoading(false);
+  }
+
+  const dndActive = isInDNDWindow(settings);
+  const isSoundEnabled = settings.soundEnabled && !dndActive;
+  const isVibrationEnabled = settings.vibrationEnabled && !dndActive;
+
+  return (
+    <SettingsContext.Provider
+      value={{
+        settings,
+        loading,
+        updateSettings,
+        isDNDActive: dndActive,
+        isSoundEnabled,
+        isVibrationEnabled,
+      }}
+    >
+      {children}
+    </SettingsContext.Provider>
+  );
+}
+
+// ──────────────────────────────────────────
+// Consumer hook
+// ──────────────────────────────────────────
+
+export function useSettingsContext(): SettingsContextValue {
+  const ctx = useContext(SettingsContext);
+  if (!ctx) {
+    throw new Error(
+      "useSettingsContext must be used within a <SettingsProvider>"
+    );
+  }
+  return ctx;
+}

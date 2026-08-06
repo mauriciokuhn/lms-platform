@@ -1,0 +1,196 @@
+name: CI/CD
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+    branches: [main]
+
+# Cancel superseded runs on the same branch/PR to save CI minutes.
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # The Prisma schema hardcodes `url = "file:./dev.db"` (SQLite) and the
+  # vitest suite bootstraps its own isolated SQLite databases, so no
+  # DATABASE_URL is needed here (the `postgres` job sets its own below).
+  NEXTAUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  NEXTAUTH_URL: "http://localhost:3000"
+  # NextAuth v5 canonical names — the auth config reads AUTH_*; the legacy
+  # NEXTAUTH_* aliases are kept for compatibility. Without AUTH_URL the
+  # host is untrusted in production (UntrustedHost -> 500 on /api/auth/*).
+  AUTH_SECRET: ${{ secrets.NEXTAUTH_SECRET || 'test-secret-for-ci' }}
+  AUTH_URL: "http://localhost:3000"
+  # Google OAuth is only exercised at runtime (e2e uses credentials login),
+  # but the auth config reads these env vars at build time.
+  GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
+  GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
+
+jobs:
+  lint:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      # env:check reads the .env file — materialize one from the workflow
+      # env block (same names/values the app gets in CI) so the documented
+      # vars never drift from what the code actually reads.
+      - name: Create .env for env:check
+        run: |
+          printf 'DATABASE_URL="file:./dev.db"\nAUTH_SECRET="%s"\nAUTH_URL="%s"\nNEXT_PUBLIC_APP_URL="%s"\n' \
+            "$NEXTAUTH_SECRET" "$NEXTAUTH_URL" "$NEXT_PUBLIC_APP_URL" > .env
+      - name: Env sanity check
+        run: npm run env:check
+      # Fail the build on ANY eslint warning (not just errors) — the
+      # package.json lint script already carries --max-warnings 0.
+      - run: npm run lint
+
+  # Validate the versioned migrations against a real PostgreSQL instance:
+  # switches the datasource provider, generates the client, applies the
+  # committed migrations with `migrate deploy` and seeds. Docker isn't
+  # available on the dev machine, so this runs only in CI.
+  postgres:
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: postgres
+          POSTGRES_PASSWORD: postgres
+          POSTGRES_DB: lms
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd "pg_isready -U postgres"
+          --health-interval 5s
+          --health-timeout 5s
+          --health-retries 5
+    env:
+      DATABASE_URL: postgresql://postgres:postgres@localhost:5432/lms
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      - run: node scripts/switch-provider.js postgresql
+      # Fail the PR if schema.prisma was edited without a matching
+      # migration (migrate deploy would not detect that drift). The drift
+      # check replays the migrations in a dedicated shadow DB; it must
+      # exist beforehand (Prisma does not auto-create it) and must be a
+      # SEPARATE database from $DATABASE_URL, otherwise migrate deploy
+      # fails with P3005 (schema not empty).
+      - name: Create shadow database for drift check
+        run: |
+          sudo apt-get update -qq
+          sudo apt-get install -y -qq postgresql-client
+          PGPASSWORD=postgres psql -h localhost -U postgres -c "CREATE DATABASE lms_shadow"
+      # Shadow DB must be a SEPARATE database: pointing it at $DATABASE_URL
+      # leaves the replayed migration's tables in the real `lms` DB, which
+      # then makes `migrate deploy` fail with P3005 (schema not empty).
+      - run: npx prisma migrate diff --from-migrations prisma/migrations --to-schema-datamodel prisma/schema.prisma --shadow-database-url "postgresql://postgres:postgres@localhost:5432/lms_shadow" --exit-code
+      - run: npx prisma generate
+      - run: npx prisma migrate deploy
+      - run: npx prisma db seed
+      - name: Verify db.ts resolves Postgres via env
+        run: npx tsc --noEmit
+
+  typecheck:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      # Reuse the Next.js build cache across runs (shared with the e2e job).
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npx tsc --noEmit
+      - run: npm run build
+
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      - run: npx prisma generate
+      - run: npm test
+      - name: Upload vitest report
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: vitest-report
+          # coverage/ exists only if the vitest config enables coverage;
+          # the ignore flag makes the upload a no-op otherwise.
+          path: |
+            coverage/
+          if-no-files-found: ignore
+          retention-days: 7
+
+  e2e:
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: "npm"
+      - run: npm ci
+      # Cache the downloaded Chromium so it is not re-downloaded every run.
+      - uses: actions/cache@v4
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+      - run: npx playwright install --with-deps chromium
+      - run: npx prisma generate
+      - run: npx prisma db push
+      - run: npx prisma db seed
+      # Fail fast on type errors before spending minutes on a build.
+      - run: npx tsc --noEmit
+      # Reuse the Next.js build cache across runs.
+      - uses: actions/cache@v4
+        with:
+          path: .next/cache
+          key: ${{ runner.os }}-nextjs-${{ hashFiles('**/package-lock.json') }}
+          restore-keys: |
+            ${{ runner.os }}-nextjs-
+      # Build once, up-front. E2E_BUILT=1 below tells Playwright to just
+      # `next start` the existing bundle instead of rebuilding inside its
+      # webServer (which also avoids the flaky `build && start` chain).
+      - run: npm run build
+      - name: Run e2e suite (production bundle)
+        run: npx playwright test --config src/tests/e2e/playwright.config.ts
+        env:
+          E2E_PRODUCTION: "1"
+          E2E_BUILT: "1"
+      - name: Upload Playwright report
+        # Uploaded on every run (success or failure) so the HTML report is
+        # always available for inspection; no-op if the directory is absent.
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: playwright-report
+          path: playwright-report/
+          if-no-files-found: ignore
+          retention-days: 7
