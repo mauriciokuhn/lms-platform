@@ -18,9 +18,6 @@ const nextConfig: NextConfig = {
       { protocol: "https", hostname: "lh3.googleusercontent.com" },
     ],
   },
-  compiler: {
-    removeConsole: process.env.NODE_ENV === "production",
-  },
   async headers() {
     return [
       {
