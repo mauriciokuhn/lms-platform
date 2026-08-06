@@ -5,7 +5,7 @@ const nextConfig: NextConfig = {
   // the native Query Engine binaries (libquery_engine-*.so.node) are shipped in
   // the traced deployment bundle, or production crashes with engine-not-found.
   outputFileTracingIncludes: {
-    '/**/*': ['./src/generated/prisma/**/*'],
+    '/*': ['./src/generated/prisma/**/*'],
   },
   serverExternalPackages: ["bcryptjs"],
   images: {
