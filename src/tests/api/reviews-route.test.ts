@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 // ── Mocks (hoisted BEFORE the route is imported) ────────────────────────
 // @/lib/db is a singleton pointing at dev.db; swap it for the isolated
