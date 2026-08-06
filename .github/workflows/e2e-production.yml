@@ -1,0 +1,92 @@
+name: E2E Production
+
+# Roda o teste e2e contra a produção (scripts/e2e-production.mjs):
+#   - automaticamente, sempre que o workflow "Deploy to Production" concluir com sucesso
+#   - manualmente, via botão "Run workflow" (workflow_dispatch)
+# Reporta o resultado como commit status (context: e2e-production) no SHA deployado.
+
+on:
+  workflow_dispatch:
+  workflow_run:
+    workflows: ["Deploy to Production"]
+    types: [completed]
+
+# Só o teste do deploy mais recente importa: cancela execuções antigas pendentes.
+concurrency:
+  group: e2e-production
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+  statuses: write # criar commit status (report do resultado)
+
+jobs:
+  e2e:
+    name: E2E contra produção
+    runs-on: ubuntu-latest
+    steps:
+      - name: Identificar SHA e conclusão do deploy
+        id: sha
+        run: |
+          if [ "${{ github.event_name }}" = "workflow_run" ]; then
+            echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
+            echo "conclusion=${{ github.event.workflow_run.conclusion }}" >> "$GITHUB_OUTPUT"
+          else
+            echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
+            echo "conclusion=success" >> "$GITHUB_OUTPUT"
+          fi
+          echo "sha resolvido: $SHA"
+        shell: bash
+
+      - name: Ignorar se o deploy falhou
+        if: steps.sha.outputs.conclusion != 'success'
+        run: |
+          echo "Deploy concluiu com '${{ steps.sha.outputs.conclusion }}' — pulando e2e."
+          exit 0
+
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ steps.sha.outputs.sha }}
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: "Status: pendente"
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/statuses/${{ steps.sha.outputs.sha }} \
+            -f state=pending \
+            -f context=e2e-production \
+            -f description="E2E produção em execução…" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: Rodar e2e contra produção
+        id: e2e
+        env:
+          E2E_BASE: ${{ vars.E2E_BASE_URL || 'https://lms-platform-beryl-gamma.vercel.app' }}
+        run: node scripts/e2e-production.mjs
+
+      - name: "Status: sucesso"
+        if: success()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/statuses/${{ steps.sha.outputs.sha }} \
+            -f state=success \
+            -f context=e2e-production \
+            -f description="E2E produção: ✓ todos os fluxos passaram" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: "Status: falha"
+        if: failure()
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          gh api repos/${{ github.repository }}/statuses/${{ steps.sha.outputs.sha }} \
+            -f state=failure \
+            -f context=e2e-production \
+            -f description="E2E produção: ✗ falhou — veja o log da run" \
+            -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
