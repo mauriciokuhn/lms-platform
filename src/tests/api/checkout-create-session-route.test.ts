@@ -7,7 +7,7 @@
  * mocked; real enrollments go to the isolated test database.
  */
 import { describe, it, expect, beforeAll, afterAll, beforeEach, afterEach, vi } from "vitest";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 const dbHolder = vi.hoisted(() => ({ prisma: null as PrismaClient | null }));
 vi.mock("@/lib/db", () => ({
