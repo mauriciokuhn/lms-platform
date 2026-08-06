@@ -9,7 +9,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 // ── Mocks (hoisted BEFORE the route is imported) ────────────────────────
 const dbHolder = vi.hoisted(() => ({ prisma: null as PrismaClient | null }));
