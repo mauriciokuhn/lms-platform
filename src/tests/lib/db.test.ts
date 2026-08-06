@@ -13,7 +13,7 @@ import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const ctorCalls = vi.hoisted(() => [] as unknown[][]);
 
-vi.mock("../../generated/prisma/client", () => ({
+vi.mock("@prisma/client", () => ({
   PrismaClient: vi.fn((...args: unknown[]) => {
     ctorCalls.push(args);
     return { __dbMock: true };
