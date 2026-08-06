@@ -1,7 +1,7 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getTestDb, cleanupTestDb, closeTestDb } from "../setup";
 import bcrypt from "bcryptjs";
-import type { PrismaClient, User, Course } from "../../generated/prisma/client";
+import type { PrismaClient, User, Course } from "@prisma/client";
 
 let db: PrismaClient;
 let instructor: User;
