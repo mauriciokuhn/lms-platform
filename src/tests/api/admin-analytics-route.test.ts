@@ -8,7 +8,7 @@
  */
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 import { NextRequest } from "next/server";
 
 // ── Mocks (hoisted BEFORE the route is imported) ────────────────────────
