@@ -6,8 +6,8 @@
  * prevent test pollution when running in parallel.
  */
 
-import { PrismaClient } from "../generated/prisma/client";
-import type { Prisma } from "../generated/prisma/client";
+import { PrismaClient } from "@prisma/client";
+import type { Prisma } from "@prisma/client";
 import bcrypt from "bcryptjs";
 import crypto from "crypto";
 import { execSync } from "child_process";
