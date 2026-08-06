@@ -169,7 +169,47 @@ npm run generate-assets  # Gerar ícones PWA + favicon + OG image
 npm run env:check        # Validar .env contra o .env.example
 npm run preflight        # Verificar pré-requisitos antes do deploy
 npm run pre-deploy       # Gate completo: env:check + preflight + tsc + lint + test + build
+node scripts/e2e-production.mjs   # E2E contra a produção (rodar com E2E_BASE para outra URL)
 ```
+
+---
+
+## 🤖 CI/CD e Testes Automatizados
+
+Todo push na `main` dispara uma cadeia automatizada de qualidade:
+
+| Workflow | Quando roda | O que faz |
+|----------|------------|-----------|
+| `ci.yml` | Todo push/PR | Valida o Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed → `tsc` + lint + vitest + build |
+| `deploy.yml` | Push na `main` | `vercel build` + `vercel deploy --prod` (deploy de produção) |
+| `e2e-production.yml` | **Após cada deploy**, manual (`workflow_dispatch`) e **a cada 6h** (healthcheck) | Roda `scripts/e2e-production.mjs` contra a produção e reporta o resultado como **commit status** `e2e-production` no SHA deployado |
+| `deploy-preview.yml` | Cada PR | Deploy de preview + **e2e no preview** (commit status `e2e-preview`) + comentário com a URL no PR |
+| `sanity.yml` | (conforme configurado) | Verificações extras do repo |
+
+**Fluxo de um push na main:** `push → ci.yml → deploy.yml (produção) → e2e-production.yml (e2e automático) → commit status verde/vermelho`.
+
+### Variáveis e segredos do CI
+
+- **Secrets** (Settings → Secrets and variables → Actions): `VERCEL_TOKEN`, `VERCEL_ORG_ID`, `VERCEL_PROJECT_ID` (deploy), `E2E_ALERT_WEBHOOK` (opcional — URL de webhook no formato Slack `{"text": "..."}` para alertar quando o e2e pós-deploy falhar).
+- **Variables**: `E2E_BASE_URL` (opcional — sobrescreve a URL de produção padrão usada pelo e2e).
+
+### Teste e2e de produção (`scripts/e2e-production.mjs`)
+
+Cobre, de ponta a ponta contra a URL real:
+
+1. **Login dos 3 papéis** (admin / instrutor / aluno) + rejeição de senha errada
+2. **Redirects por role** (admin→`/admin`, aluno→`/dashboard`, proteção de `/admin`)
+3. **Matrícula** (idempotente: aceita 201 novo ou 409 já matriculado)
+4. **Progresso de aula** (salvar, persistir e refletir no painel)
+
+O script é idempotente (não acumula dados em execuções repetidas) e usa retry
+contra cold-start. Rode localmente com: `node scripts/e2e-production.mjs` (use
+`E2E_BASE` para apontar para outra URL).
+
+> ⚠️ **Importante (Supabase):** use o **transaction pooler** na `DATABASE_URL` de
+> produção (`aws-1-us-west-2.pooler.supabase.com:6543/postgres?pgbouncer=true&connection_limit=1`).
+> O session pooler (porta `5432`) esgota rápido com serverless (erro
+> `EMAXCONNSESSION max clients reached`), derrubando toda a API.
 
 ---
 
@@ -260,7 +300,7 @@ No dashboard da Vercel, vá em **Settings → Environment Variables** e adicione
 
 | Variável | Obrigatório? | Valor |
 |----------|-------------|-------|
-| `DATABASE_URL` | ✅ Sim | `postgresql://...` (da Neon) |
+| `DATABASE_URL` | ✅ Sim | `postgresql://...` — **transaction pooler** (Supabase: porta `6543` + `?pgbouncer=true&connection_limit=1`; Neon: endpoint pooling) |
 | `NEXTAUTH_SECRET` | ✅ Sim | Secreto forte |
 | `NEXTAUTH_URL` | ✅ Sim | `https://seu-site.vercel.app` |
 | `NEXT_PUBLIC_APP_URL` | ✅ Sim | `https://seu-site.vercel.app` |
