@@ -3,13 +3,21 @@ name: E2E Production
 # Roda o teste e2e contra a produção (scripts/e2e-production.mjs):
 #   - automaticamente, sempre que o workflow "Deploy to Production" concluir com sucesso
 #   - manualmente, via botão "Run workflow" (workflow_dispatch)
-# Reporta o resultado como commit status (context: e2e-production) no SHA deployado.
+#   - periodicamente (healthcheck) a cada 6 horas — detecta degradação do
+#     banco/pool de conexões antes do próximo deploy
+#
+# Reporta o resultado como commit status (context: e2e-production) no SHA testado.
+#
+# Opcional: configure o secret E2E_ALERT_WEBHOOK (formato Slack — {"text": "..."})
+# para receber um alerta quando o e2e falhar.
 
 on:
   workflow_dispatch:
   workflow_run:
     workflows: ["Deploy to Production"]
     types: [completed]
+  schedule:
+    - cron: "0 */6 * * *"
 
 # Só o teste do deploy mais recente importa: cancela execuções antigas pendentes.
 concurrency:
@@ -27,16 +35,21 @@ jobs:
     steps:
       - name: Identificar SHA e conclusão do deploy
         id: sha
+        shell: bash
+        env:
+          GH_TOKEN: ${{ github.token }}
         run: |
           if [ "${{ github.event_name }}" = "workflow_run" ]; then
             echo "sha=${{ github.event.workflow_run.head_sha }}" >> "$GITHUB_OUTPUT"
             echo "conclusion=${{ github.event.workflow_run.conclusion }}" >> "$GITHUB_OUTPUT"
+          elif [ "${{ github.event_name }}" = "schedule" ]; then
+            MAIN_SHA="$(gh api repos/${{ github.repository }}/commits/main --jq .sha)"
+            echo "sha=${MAIN_SHA}" >> "$GITHUB_OUTPUT"
+            echo "conclusion=success" >> "$GITHUB_OUTPUT"
           else
             echo "sha=${{ github.sha }}" >> "$GITHUB_OUTPUT"
             echo "conclusion=success" >> "$GITHUB_OUTPUT"
           fi
-          echo "sha resolvido: $SHA"
-        shell: bash
 
       - name: Ignorar se o deploy falhou
         if: steps.sha.outputs.conclusion != 'success'
@@ -90,3 +103,21 @@ jobs:
             -f context=e2e-production \
             -f description="E2E produção: ✗ falhou — veja o log da run" \
             -f target_url="$GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$GITHUB_RUN_ID"
+
+      - name: "Alerta de falha (webhook)"
+        if: failure()
+        env:
+          WEBHOOK: ${{ secrets.E2E_ALERT_WEBHOOK }}
+          SHA: ${{ steps.sha.outputs.sha }}
+          RUN_URL: ${{ github.server_url }}/${{ github.repository }}/actions/runs/${{ github.run_id }}
+        run: |
+          if [ -z "$WEBHOOK" ]; then
+            echo "⚠️ E2E_ALERT_WEBHOOK não configurado — pulando alerta."
+            exit 0
+          fi
+          MSG="❌ E2E de produção FALHOU no commit \`${SHA:0:7}\`"
+          MSG="${MSG}\nRun: ${RUN_URL}"
+          curl -s -o /dev/null -w "webhook: %{http_code}\n" \
+            -X POST "$WEBHOOK" \
+            -H 'Content-Type: application/json' \
+            -d "{\"text\":\"${MSG}\"}" || true
