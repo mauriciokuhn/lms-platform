@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import { getTestDb, cleanupTestDb, closeTestDb, createTestUser, createTestCourse } from "../setup";
-import type { PrismaClient } from "../../generated/prisma/client";
+import type { PrismaClient } from "@prisma/client";
 
 let prisma: PrismaClient;
 
