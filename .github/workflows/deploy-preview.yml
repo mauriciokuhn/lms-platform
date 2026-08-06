@@ -22,6 +22,8 @@ env:
 permissions:
   contents: read
   statuses: write # commit status do e2e no preview
+  issues: write # comentário com a URL do preview na PR
+  pull-requests: write
 
 jobs:
   deploy-preview:
@@ -77,12 +79,14 @@ jobs:
 
       # ── E2E contra o deployment de preview (mesmo fluxo da produção) ──────────
       - uses: actions/setup-node@v4
+        if: always() && steps.deploy.outputs.url != ''
         with:
           node-version: 22
 
+      # if: always() — o e2e roda mesmo que o comentário da PR falhe
       - name: E2E no preview
         id: e2e
-        if: steps.deploy.outputs.url != ''
+        if: always() && steps.deploy.outputs.url != ''
         env:
           E2E_BASE: ${{ steps.deploy.outputs.url }}
         run: node scripts/e2e-production.mjs
