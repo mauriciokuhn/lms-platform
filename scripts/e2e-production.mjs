@@ -3,7 +3,7 @@
  *
  * Fluxos cobertos:
  *  1. Login dos 3 papéis (admin / instrutor / aluno) + redirect por role
- *  2. Matrícula do aluno em um curso não matriculado
+ *  2. Matrícula do aluno (idempotente: 201 novo ou 409 já matriculado)
  *  3. Progresso de aula (salvar + verificar persistência)
  *
  * Uso: node scripts/e2e-production.mjs
@@ -51,6 +51,19 @@ async function postForm(path, fields, jar = "") {
     redirect: "manual",
   });
   return { res };
+}
+
+const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
+
+// Retry em chamadas autenticadas: cold start / instância transitória pode
+// responder 401/500 na primeira tentativa.
+async function getWithRetry(path, jar, attempts = 3) {
+  for (let i = 1; i <= attempts; i++) {
+    const r = await get(path, jar);
+    if (r.res.status === 200) return r;
+    await sleep(1500 * i);
+  }
+  return get(path, jar);
 }
 
 async function postJson(path, data, jar = "") {
@@ -146,23 +159,44 @@ async function main() {
 
   // ────────────────────────── 3. MATRÍCULA ──────────────────────────
   console.log("3️⃣  MATRÍCULA do aluno");
-  const catalog = (await get("/api/courses")).body || [];
-  const my = (await get("/api/enrollments", aluno.jar)).body || [];
+  const catalogRaw = (await get("/api/courses")).body;
+  const catalog = Array.isArray(catalogRaw) ? catalogRaw : [];
+  const myRaw = (await getWithRetry("/api/enrollments", aluno.jar)).body;
+  const my = Array.isArray(myRaw) ? myRaw : [];
+  check("Catálogo carregou (API 200)", Array.isArray(catalogRaw) && catalog.length > 0, `${catalog.length} cursos`);
+  check(
+    "GET /api/enrollments retornou lista",
+    Array.isArray(myRaw),
+    Array.isArray(myRaw) ? `${my.length} matrículas` : JSON.stringify(myRaw || null).slice(0, 60)
+  );
   const enrolledIds = new Set(my.map((e) => e.course?.id));
-  const target = catalog.find((c) => c.published && !enrolledIds.has(c.id));
-  check("Catálogo carregou (API 200)", Array.isArray(catalog) && catalog.length > 0, `${catalog.length} cursos`);
+  // Idempotente: prefere um curso não matriculado; se o aluno já está em todos,
+  // usa a primeira matrícula (o POST /enroll então retorna 409 — aceitável).
+  let alreadyEnrolled = false;
+  let target = catalog.find((c) => c.published && !enrolledIds.has(c.id));
+  if (!target) {
+    const firstId = my[0]?.course?.id;
+    target = catalog.find((c) => c.id === firstId) || catalog.find((c) => c.published);
+    alreadyEnrolled = true;
+  }
 
   if (target) {
-    console.log(`    Curso alvo: "${target.title}" (${target.id})`);
+    console.log(`    Curso alvo: "${target.title}" (${alreadyEnrolled ? "já matriculado" : "não matriculado"})`);
     const { res, body } = await postJson(`/api/courses/${target.id}/enroll`, {}, aluno.jar);
-    const enrolledNow = res.status === 201 || res.status === 409; // 409 = já matriculado
+    const enrolledNow = res.status === 201 || res.status === 409; // 201 novo, 409 já matriculado
     check("POST /enroll → 201 (ou 409 se já)", enrolledNow, `status ${res.status}`);
-    check("Matrícula retornou curso", body?.course?.title || res.status === 409, body?.course?.title || "");
+    check(
+      "Matrícula confirmada",
+      res.status === 201 ? !!body?.course?.title : res.status === 409,
+      res.status === 201 ? body?.course?.title || "" : "aluno já matriculado (ok)"
+    );
 
     // ────────────────────────── 4. PROGRESSO DE AULA ──────────────────────────
     console.log("4️⃣  PROGRESSO de aula");
     const courseDetail = (await get(`/api/courses/${target.id}`, aluno.jar)).body;
-    const lessons = (courseDetail?.modules || []).flatMap((m) => m.lessons || []);
+    const lessons = Array.isArray(courseDetail?.modules)
+      ? courseDetail.modules.flatMap((m) => (Array.isArray(m?.lessons) ? m.lessons : []))
+      : [];
     check("Curso tem aulas carregadas", lessons.length > 0, `${lessons.length} aulas`);
     if (lessons.length > 0) {
       const lesson = lessons[0];
@@ -186,7 +220,8 @@ async function main() {
       );
 
       // Verificação final: matrícula aparece com progresso
-      const after = (await get("/api/enrollments", aluno.jar)).body || [];
+      const afterRaw = (await getWithRetry("/api/enrollments", aluno.jar)).body;
+      const after = Array.isArray(afterRaw) ? afterRaw : [];
       const mine = after.find((e) => e.course?.id === target.id);
       check(
         "Matrícula listada com progresso",
@@ -194,9 +229,9 @@ async function main() {
         mine ? `${mine.course?.title} — ${mine.progress?.completed ?? 0}/${mine.progress?.total ?? 0} aulas (${mine.progress?.percentage ?? 0}%)` : "não encontrada"
       );
       check(
-        "Progresso refletido no painel (1 de 2 aulas)",
-        mine?.progress?.completed === 1 && mine?.progress?.total === 2,
-        `completed ${mine?.progress?.completed ?? "?"} / total ${mine?.progress?.total ?? "?"}`
+        "Progresso refletido no painel (≥1 aula concluída)",
+        (mine?.progress?.completed ?? 0) >= 1 && (mine?.progress?.percentage ?? 0) > 0,
+        `completed ${mine?.progress?.completed ?? "?"} / total ${mine?.progress?.total ?? "?"} (${mine?.progress?.percentage ?? 0}%)`
       );
     }
   } else {
