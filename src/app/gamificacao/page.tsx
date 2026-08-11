@@ -12,16 +12,18 @@ import { LogoutButton } from "@/components/logout-button";
 import Link from "next/link";
 
 export default function GamificacaoPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { progress, ranking, loading } = useGamificationContext();
   const [activeTab, setActiveTab] = useState<"progress" | "ranking" | "social">("progress");
 
   useEffect(() => {
-    if (!session?.user) router.push("/login");
-  }, [session, router]);
+    // Only redirect once the session has settled — avoids bouncing logged-in
+    // users to /login while the session is still loading on hard navigation.
+    if (status === "unauthenticated") router.push("/login");
+  }, [status, router]);
 
-  if (!session?.user) return null;
+  if (status === "loading" || !session?.user) return null;
 
   return (
     <AnimatedPage>

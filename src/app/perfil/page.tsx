@@ -32,14 +32,15 @@ const badgeIcons: Record<string, string> = {
 };
 
 export default function PerfilPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [loading, setLoading] = useState(true);
   const [activeTab, setActiveTab] = useState<"overview" | "badges" | "certificates">("overview");
 
   useEffect(() => {
-    if (!session?.user) { router.push("/login"); return; }
+    if (status === "unauthenticated") { router.push("/login"); return; }
+    if (status === "loading") return;
 
     async function load() {
       try {

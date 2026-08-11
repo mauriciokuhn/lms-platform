@@ -25,16 +25,17 @@ interface Enrollment {
 }
 
 export default function MyCoursesPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    if (!session?.user) {
+    if (status === "unauthenticated") {
       router.push("/login");
       return;
     }
+    if (status === "loading") return;
 
     async function loadData() {
       try {

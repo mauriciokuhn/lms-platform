@@ -20,17 +20,17 @@ const toneMeta = {
 } as const;
 
 export default function SettingsPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const { settings, loading, updateSettings } = useUserSettings();
   const notifyAlert = useNotificationAlert();
   const [saving, setSaving] = useState<string | null>(null);
 
   useEffect(() => {
-    if (!session?.user) router.push("/login");
-  }, [session, router]);
+    if (status === "unauthenticated") router.push("/login");
+  }, [status, router]);
 
-  if (!session?.user) return null;
+  if (status === "loading" || !session?.user) return null;
 
   const handleToggle = async (field: string, value: boolean) => {
     setSaving(field);

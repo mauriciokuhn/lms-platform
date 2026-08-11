@@ -20,17 +20,18 @@ interface Certificate {
 }
 
 export default function CertificatesPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [certificates, setCertificates] = useState<Certificate[]>([]);
   const [loading, setLoading] = useState(true);
   const [selectedCert, setSelectedCert] = useState<Certificate | null>(null);
 
   useEffect(() => {
-    if (!session?.user) {
+    if (status === "unauthenticated") {
       router.push("/login");
       return;
     }
+    if (status === "loading") return;
 
     async function loadData() {
       try {

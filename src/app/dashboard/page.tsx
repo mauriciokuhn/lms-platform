@@ -86,7 +86,7 @@ function RecommendationsSection() {
 }
 
 export default function DashboardPage() {
-  const { data: session } = useSession();
+  const { data: session, status } = useSession();
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificatesCount, setCertificatesCount] = useState(0);
@@ -94,7 +94,8 @@ export default function DashboardPage() {
   const { progress: gamification, loading: gamificationLoading } = useGamificationContext();
 
   useEffect(() => {
-    if (!session?.user) { router.push("/login"); return; }
+    if (status === "unauthenticated") { router.push("/login"); return; }
+    if (status === "loading") return;
 
     async function loadData() {
       try {
