@@ -47,6 +47,11 @@ const categoryMeta: Record<string, { icon: string; gradient: string; description
     gradient: "from-cyan-500 to-sky-600",
     description: "SQL, PostgreSQL, modelagem e otimização",
   },
+  "Ferramentas Digitais": {
+    icon: "🧰",
+    gradient: "from-amber-500 to-orange-600",
+    description: "Google Drive, Docs, Classroom, Planilhas e lousa digital para professores",
+  },
 };
 
 export default function CategoriasPage() {
