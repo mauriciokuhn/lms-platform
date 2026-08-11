@@ -113,7 +113,7 @@ export default function PlanosPage() {
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
           courseId: `plan-${plan.id}`,
-          courseTitle: `Plano ${plan.name} - LMS Platform`,
+          courseTitle: `Plano ${plan.name} - Ponto do Saber`,
           coursePrice: annual ? plan.price * 10 : plan.price,
         }),
       });
@@ -141,7 +141,7 @@ export default function PlanosPage() {
       <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <Link href="/" className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            LMS<span className="text-zinc-400">Platform</span>
+            Ponto<span className="text-zinc-400"> do Saber</span>
           </Link>
           <nav className="hidden items-center gap-6 sm:flex">
             <Link href="/cursos" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">
@@ -323,7 +323,7 @@ export default function PlanosPage() {
       {/* Footer */}
       <footer className="border-t border-zinc-200 bg-white px-4 py-8 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto max-w-7xl text-center text-sm text-zinc-400">
-          &copy; {new Date().getFullYear()} LMS Platform. Pagamentos processados pelo Stripe.
+          &copy; {new Date().getFullYear()} Ponto do Saber. Pagamentos processados pelo Stripe.
         </div>
       </footer>
     </div>

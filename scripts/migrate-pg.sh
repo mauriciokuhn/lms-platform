@@ -1,6 +1,6 @@
 #!/bin/bash
 # ────────────────────────────────────────────────────
-# PostgreSQL Migration Script for LMS Platform
+# PostgreSQL Migration Script for Ponto do Saber
 # ────────────────────────────────────────────────────
 # This script:
 #   1. Checks prerequisites (Docker, Node)
@@ -22,7 +22,7 @@ BLUE='\033[0;34m'
 NC='\033[0m'
 
 echo -e "${BLUE}┌─────────────────────────────────────────────┐${NC}"
-echo -e "${BLUE}│     LMS Platform — PostgreSQL Migration     │${NC}"
+echo -e "${BLUE}│    Ponto do Saber — PostgreSQL Migration    │${NC}"
 echo -e "${BLUE}└─────────────────────────────────────────────┘${NC}"
 echo ""
 

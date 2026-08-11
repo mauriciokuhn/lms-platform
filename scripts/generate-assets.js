@@ -37,7 +37,32 @@ async function main() {
     console.log(`  ✅ icon-${size}x${size}.png`);
   }
 
-  // Generate OG image (with gradient background)
+  // Brand mark reused in the OG image (kept in sync with public/icons/icon.svg)
+  const iconMark = `
+    <!-- light rays -->
+    <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.9">
+      <path d="M256 60v-26"/>
+      <path d="M166 88l-20-20"/>
+      <path d="M346 88l20-20"/>
+    </g>
+    <!-- sparkle -->
+    <path d="M400 128l9 22 22 9-22 9-9 22-9-22-22-9 22-9z" fill="#ffffff" opacity="0.9"/>
+    <!-- lightbulb -->
+    <g fill="#1c1917">
+      <path d="M256 118c-46 0-80 33-80 74 0 30 17 50 34 64v22h92v-22c17-14 34-34 34-64 0-41-34-74-80-74z"/>
+      <rect x="222" y="290" width="68" height="16" rx="7"/>
+      <rect x="238" y="306" width="36" height="10" rx="5"/>
+    </g>
+    <circle cx="256" cy="186" r="26" fill="#ffffff" opacity="0.14"/>
+    <path d="M248 160l18 24h-11l-5 22-18-26h11l5-20z" fill="#ffffff" opacity="0.95"/>
+    <!-- open book -->
+    <g fill="#1c1917">
+      <path d="M96 354l160 32V258l-160-34z"/>
+      <path d="M416 354l-160 32V258l160-34z"/>
+    </g>
+    <path d="M256 258v128" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.9"/>`;
+
+  // Generate OG image (dark zinc gradient + amber brand accent)
   console.log("\nGenerating OG image...");
   const ogSvg = `<svg xmlns="http://www.w3.org/2000/svg" width="1200" height="630">
     <defs>
@@ -45,11 +70,17 @@ async function main() {
         <stop offset="0%" style="stop-color:#18181b"/>
         <stop offset="100%" style="stop-color:#27272a"/>
       </linearGradient>
+      <radialGradient id="glow" cx="50%" cy="38%" r="45%">
+        <stop offset="0%" style="stop-color:#fbbf24;stop-opacity:0.16"/>
+        <stop offset="100%" style="stop-color:#fbbf24;stop-opacity:0"/>
+      </radialGradient>
     </defs>
     <rect width="1200" height="630" fill="url(#bg)"/>
-    <text x="600" y="260" font-family="system-ui,sans-serif" font-size="80" font-weight="bold" fill="white" text-anchor="middle">LMS Platform</text>
-    <text x="600" y="340" font-family="system-ui,sans-serif" font-size="32" fill="#a1a1aa" text-anchor="middle">Aprendizado Online</text>
-    <text x="600" y="400" font-family="system-ui,sans-serif" font-size="20" fill="#71717a" text-anchor="middle">Cursos online gratuitos com certificados digitais</text>
+    <rect width="1200" height="630" fill="url(#glow)"/>
+    <g transform="translate(408 34) scale(0.75)">${iconMark}</g>
+    <text x="600" y="452" font-family="system-ui,sans-serif" font-size="84" font-weight="bold" fill="#fbbf24" text-anchor="middle">Ponto do Saber</text>
+    <text x="600" y="516" font-family="system-ui,sans-serif" font-size="32" fill="#e4e4e7" text-anchor="middle">Aprendizado Online</text>
+    <text x="600" y="566" font-family="system-ui,sans-serif" font-size="22" fill="#a1a1aa" text-anchor="middle">Cursos online gratuitos com certificados digitais</text>
   </svg>`;
 
   await sharp(Buffer.from(ogSvg))

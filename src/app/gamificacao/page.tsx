@@ -29,7 +29,7 @@ export default function GamificacaoPage() {
         <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
           <div className="mx-auto flex max-w-5xl items-center justify-between px-4 py-4">
             <Link href="/dashboard" className="text-lg font-bold text-zinc-900 dark:text-white">
-              LMS Platform
+              Ponto do Saber
             </Link>
             <div className="flex items-center gap-1">
               <Link href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400">Dashboard</Link>

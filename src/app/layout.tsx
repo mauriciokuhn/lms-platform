@@ -9,8 +9,8 @@ const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://lms-platform.vercel.
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),
   title: {
-    default: "LMS Platform - Aprendizado Online",
-    template: "%s | LMS Platform",
+    default: "Ponto do Saber - Aprendizado Online",
+    template: "%s | Ponto do Saber",
   },
   description:
     "Plataforma de cursos online com videoaulas, questionários interativos, certificados digitais e acompanhamento de progresso. Aprenda no seu ritmo!",
@@ -23,15 +23,15 @@ export const metadata: Metadata = {
     "aprendizado online",
     "plataforma de cursos",
   ],
-  authors: [{ name: "LMS Platform" }],
-  creator: "LMS Platform",
-  publisher: "LMS Platform",
+  authors: [{ name: "Ponto do Saber" }],
+  creator: "Ponto do Saber",
+  publisher: "Ponto do Saber",
   manifest: "/manifest.json",
   openGraph: {
     type: "website",
     locale: "pt_BR",
-    siteName: "LMS Platform",
-    title: "LMS Platform - Aprendizado Online",
+    siteName: "Ponto do Saber",
+    title: "Ponto do Saber - Aprendizado Online",
     description:
       "Plataforma completa de cursos online com videoaulas, questionários e certificados.",
     url: baseUrl,
@@ -40,13 +40,13 @@ export const metadata: Metadata = {
         url: "/og-image.png",
         width: 1200,
         height: 630,
-        alt: "LMS Platform - Aprendizado Online",
+        alt: "Ponto do Saber - Aprendizado Online",
       },
     ],
   },
   twitter: {
     card: "summary_large_image",
-    title: "LMS Platform - Aprendizado Online",
+    title: "Ponto do Saber - Aprendizado Online",
     description:
       "Plataforma completa de cursos online com videoaulas, questionários e certificados.",
     images: ["/og-image.png"],
@@ -68,7 +68,7 @@ export const metadata: Metadata = {
   },
   appleWebApp: {
     capable: true,
-    title: "LMS Platform",
+    title: "Ponto do Saber",
     statusBarStyle: "black-translucent",
   },
   other: {
@@ -89,8 +89,8 @@ export default function RootLayout({
     >
       <head>
         {/* PWA meta tags */}
-        <meta name="application-name" content="LMS Platform" />
-        <meta name="apple-mobile-web-app-title" content="LMS Platform" />
+        <meta name="application-name" content="Ponto do Saber" />
+        <meta name="apple-mobile-web-app-title" content="Ponto do Saber" />
         <meta name="apple-mobile-web-app-capable" content="yes" />
         <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
         <meta name="mobile-web-app-capable" content="yes" />
@@ -103,7 +103,7 @@ export default function RootLayout({
             __html: JSON.stringify({
               "@context": "https://schema.org",
               "@type": "EducationalOrganization",
-              name: "LMS Platform",
+              name: "Ponto do Saber",
               description:
                 "Plataforma de cursos online com videoaulas, questionários e certificados.",
               url: baseUrl,

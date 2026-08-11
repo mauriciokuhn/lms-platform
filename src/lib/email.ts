@@ -149,7 +149,7 @@ function baseHtml(content: string) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎓 LMS Platform</h1>
+      <h1>🎓 Ponto do Saber</h1>
       <p>Aprendizado Online</p>
     </div>
     <div class="body">
@@ -157,9 +157,9 @@ function baseHtml(content: string) {
     </div>
     <div class="footer">
       <p>
-        Este é um email automático da <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://lmsplatform.com"}">LMS Platform</a>.<br />
+        Este é um email automático da <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://lmsplatform.com"}">Ponto do Saber</a>.<br />
         Se você não solicitou esta mensagem, ignore este email.<br />
-        &copy; ${new Date().getFullYear()} LMS Platform. Todos os direitos reservados.
+        &copy; ${new Date().getFullYear()} Ponto do Saber. Todos os direitos reservados.
       </p>
     </div>
   </div>
@@ -175,7 +175,7 @@ function baseHtml(content: string) {
 export async function sendPasswordResetEmail(email: string, resetLink: string) {
   const content = `
     <p>Olá!</p>
-    <p>Recebemos uma solicitação de redefinição de senha para sua conta na <strong>LMS Platform</strong>.</p>
+    <p>Recebemos uma solicitação de redefinição de senha para sua conta na <strong>Ponto do Saber</strong>.</p>
     <p>Clique no botão abaixo para criar uma nova senha:</p>
     <p style="text-align: center;">
       <a href="${resetLink}" class="btn">Redefinir Senha</a>
@@ -192,7 +192,7 @@ export async function sendPasswordResetEmail(email: string, resetLink: string) {
 
   return sendEmail({
     to: email,
-    subject: "Redefinição de Senha - LMS Platform",
+    subject: "Redefinição de Senha - Ponto do Saber",
     html: baseHtml(content),
   });
 }
@@ -205,7 +205,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
 
   const content = `
     <p>Bem-vindo(a), <strong>${name || "aluno"}</strong>! 🎉</p>
-    <p>Sua conta na <strong>LMS Platform</strong> foi criada com sucesso. Você agora tem acesso a:</p>
+    <p>Sua conta na <strong>Ponto do Saber</strong> foi criada com sucesso. Você agora tem acesso a:</p>
     <ul style="color: #3f3f46; font-size: 15px; line-height: 1.8; margin-bottom: 16px; padding-left: 20px;">
       <li>📚 Catálogo completo de cursos gratuitos</li>
       <li>🎥 Player de vídeo com progresso automático</li>
@@ -220,7 +220,7 @@ export async function sendWelcomeEmail(email: string, name: string) {
 
   return sendEmail({
     to: email,
-    subject: "Bem-vindo à LMS Platform! 🎓",
+    subject: "Bem-vindo ao Ponto do Saber! 🎓",
     html: baseHtml(content),
   });
 }

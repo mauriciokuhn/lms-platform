@@ -12,22 +12,14 @@ generator client {
   binaryTargets = ["native", "debian-openssl-3.0.x", "rhel-openssl-3.0.x"]
 }
 
+// ──────────────────────────────────────────
+// Active datasource: POSTGRESQL
+// switch to SQLite:  node scripts/switch-provider.js sqlite
+// ──────────────────────────────────────────
 datasource db {
-  // ──────────────────────────────────────────
-  // PRODUCTION: PostgreSQL
-  //   provider = "postgresql"
-  //   url      = env("DATABASE_URL")
-  // ──────────────────────────────────────────
-  // DEVELOPMENT: SQLite
-  provider = "sqlite"
-  url      = "file:./dev.db"
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
 }
-
-// Uncomment the block below and comment the block above for PostgreSQL:
-// datasource db {
-//   provider = "postgresql"
-//   url      = env("DATABASE_URL")
-// }
 
 // ──────────────────────────────────────────
 // ENUMS

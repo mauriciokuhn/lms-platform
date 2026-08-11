@@ -1,5 +1,5 @@
 // ──────────────────────────────────────────
-// LMS Platform - Service Worker
+// Ponto do Saber - Service Worker
 // ──────────────────────────────────────────
 // Cache name includes version for easy updates. Bumped to v2 because v1
 // used cache-first for /_next/static/*, which served stale chunks in dev
@@ -149,11 +149,11 @@ self.addEventListener('push', (event) => {
   try {
     data = event.data ? event.data.json() : {};
   } catch {
-    data = { title: 'LMS Platform', body: event.data?.text() || '' };
+    data = { title: 'Ponto do Saber', body: event.data?.text() || '' };
   }
 
   const options = {
-    title: data.title || 'LMS Platform',
+    title: data.title || 'Ponto do Saber',
     body: data.body || '',
     icon: '/icons/icon-192x192.png',
     badge: '/icons/icon-72x72.png',

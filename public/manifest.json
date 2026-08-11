@@ -1,6 +1,6 @@
 {
-  "name": "LMS Platform - Aprendizado Online",
-  "short_name": "LMS Platform",
+  "name": "Ponto do Saber - Aprendizado Online",
+  "short_name": "PontoSaber",
   "description": "Plataforma completa de cursos online com videoaulas, questionários e certificados.",
   "start_url": "/",
   "display": "standalone",

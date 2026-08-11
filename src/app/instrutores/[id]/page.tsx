@@ -80,7 +80,7 @@ export default function InstructorProfilePage({
       <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
-            LMS Platform
+            Ponto do Saber
           </Link>
           <Link
             href="/instrutores"

@@ -1,6 +1,6 @@
 #!/usr/bin/env tsx
 /**
- * Pre-flight Check — LMS Platform
+ * Pre-flight Check — Ponto do Saber
  *
  * Verifies everything is ready before deploying to production.
  * Run: npx tsx scripts/preflight.ts
@@ -90,11 +90,13 @@ function heading(text: string) {
 // ─── Checks ──────────────────────────────
 
 async function checkPrismaClient() {
+  // Default output location (node_modules/.prisma/client) — the path
+  // Vercel's build system special-cases for the Query Engine binaries.
   const clientPath = join(cwd(), "node_modules", ".prisma", "client", "client.ts");
   if (existsSync(clientPath)) {
     ok("Prisma Client", "Generated at node_modules/.prisma/client/");
   } else {
-    // Try index.js as fallback
+    // Try default.js as fallback
     const indexPath = join(cwd(), "node_modules", ".prisma", "client", "default.js");
     if (existsSync(indexPath)) {
       ok("Prisma Client", "Generated at node_modules/.prisma/client/");
@@ -240,7 +242,7 @@ async function main() {
 
   console.log(`${BOLD}${CYAN}`);
   console.log("╔══════════════════════════════════════════╗");
-  console.log("║    LMS Platform — Pre-flight Check       ║");
+  console.log("║    Ponto do Saber — Pre-flight Check    ║");
   console.log("╚══════════════════════════════════════════╝");
   console.log(`${RESET}`);
   console.log(`Started: ${new Date().toISOString()}\n`);

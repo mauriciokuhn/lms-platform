@@ -74,7 +74,7 @@ export default function CertificatesPage() {
       <header className="border-b border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 print:hidden">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
           <Link href="/dashboard" className="text-xl font-bold text-zinc-900 dark:text-white">
-            LMS Platform
+            Ponto do Saber
           </Link>
           <div className="flex items-center gap-2">
             <Link
@@ -232,7 +232,7 @@ export default function CertificatesPage() {
                 </div>
 
                 <div className="mx-auto mt-12 max-w-xs border-t border-zinc-300 pt-4">
-                  <p className="text-sm font-semibold text-zinc-900">LMS Platform</p>
+                  <p className="text-sm font-semibold text-zinc-900">Ponto do Saber</p>
                   <p className="text-xs text-zinc-500">Certificado Digital</p>
                 </div>
               </div>

@@ -75,7 +75,7 @@ export function PWAInstallPrompt() {
           </div>
           <div className="flex-1 min-w-0">
             <p className="text-sm font-semibold text-zinc-900 dark:text-white">
-              Instale o app LMS
+              Instale o app Ponto do Saber
             </p>
             <p className="text-xs text-zinc-500 dark:text-zinc-400">
               Acesse cursos offline mais rápido

@@ -2,7 +2,7 @@
 setlocal enabledelayedexpansion
 
 echo ============================================
-echo  LMS Platform - Iniciando Servidor
+echo  Ponto do Saber - Iniciando Servidor
 echo ============================================
 echo.
 

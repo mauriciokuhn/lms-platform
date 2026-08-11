@@ -43,7 +43,7 @@ export async function generateCertificatePdf(
     subject: "Certificado de conclusão de curso",
     author: data.studentName,
     keywords: `certificado, conclusão, ${data.courseTitle}, ${data.code}`,
-    creator: "LMS Platform",
+    creator: "Ponto do Saber",
   });
 
   // ── Border frame (amber, like the on-screen certificate) ──
@@ -121,7 +121,7 @@ export async function generateCertificatePdf(
   doc.setFont("helvetica", "bold");
   doc.setFontSize(11);
   doc.setTextColor(24, 24, 27);
-  doc.text("LMS Platform", centerX, 178, { align: "center" });
+  doc.text("Ponto do Saber", centerX, 178, { align: "center" });
   doc.setFont("helvetica", "normal");
   doc.setFontSize(9);
   doc.setTextColor(113, 113, 122);

@@ -1,6 +1,36 @@
 <svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 512 512" fill="none">
-  <rect width="512" height="512" rx="80" fill="#18181b"/>
-  <path d="M160 160h192a32 32 0 0132 32v128a32 32 0 01-32 32H160a32 32 0 01-32-32V192a32 32 0 0132-32z" fill="white" opacity="0.95"/>
-  <path d="M232 208l72 48-72 48V208z" fill="#18181b"/>
-  <path d="M256 400l60-60h-40v-20h40l-60-60" stroke="white" stroke-width="12" stroke-linecap="round" stroke-linejoin="round" fill="none" opacity="0.7"/>
+  <defs>
+    <linearGradient id="bg" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fbbf24"/>
+      <stop offset="100%" stop-color="#d97706"/>
+    </linearGradient>
+  </defs>
+  <rect width="512" height="512" rx="96" fill="url(#bg)"/>
+
+  <!-- light rays -->
+  <g stroke="#ffffff" stroke-width="10" stroke-linecap="round" opacity="0.9">
+    <path d="M256 60v-26"/>
+    <path d="M166 88l-20-20"/>
+    <path d="M346 88l20-20"/>
+  </g>
+
+  <!-- sparkle (saber) -->
+  <path d="M400 128l9 22 22 9-22 9-9 22-9-22-22-9 22-9z" fill="#ffffff" opacity="0.9"/>
+
+  <!-- lightbulb -->
+  <g fill="#1c1917">
+    <path d="M256 118c-46 0-80 33-80 74 0 30 17 50 34 64v22h92v-22c17-14 34-34 34-64 0-41-34-74-80-74z"/>
+    <rect x="222" y="290" width="68" height="16" rx="7"/>
+    <rect x="238" y="306" width="36" height="10" rx="5"/>
+  </g>
+  <!-- bulb glow + bolt -->
+  <circle cx="256" cy="186" r="26" fill="#ffffff" opacity="0.14"/>
+  <path d="M248 160l18 24h-11l-5 22-18-26h11l5-20z" fill="#ffffff" opacity="0.95"/>
+
+  <!-- open book -->
+  <g fill="#1c1917">
+    <path d="M96 354l160 32V258l-160-34z"/>
+    <path d="M416 354l-160 32V258l160-34z"/>
+  </g>
+  <path d="M256 258v128" stroke="#ffffff" stroke-width="8" stroke-linecap="round" opacity="0.9"/>
 </svg>

@@ -144,7 +144,7 @@ export default function PublicCertificatePage({
             </div>
 
             <div className="mx-auto mt-10 max-w-xs border-t border-zinc-300 pt-4">
-              <p className="text-sm font-semibold text-zinc-900">LMS Platform</p>
+              <p className="text-sm font-semibold text-zinc-900">Ponto do Saber</p>
               <p className="text-xs text-zinc-500">Certificado Digital Verificável</p>
             </div>
           </div>

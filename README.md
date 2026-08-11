@@ -1,4 +1,4 @@
-# 🎓 LMS Platform
+# 🎓 Ponto do Saber
 
 Plataforma de cursos online (LMS - Learning Management System) completa, moderna e gratuita.
 

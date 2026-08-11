@@ -102,7 +102,7 @@ export default function HomePage() {
       <header className="fixed inset-x-0 top-0 z-50 border-b border-zinc-200 bg-white/80 backdrop-blur-xl dark:border-zinc-800 dark:bg-zinc-950/80">
         <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3 sm:px-6">
           <span className="text-xl font-bold tracking-tight text-zinc-900 dark:text-white">
-            LMS<span className="text-zinc-400">Platform</span>
+            Ponto<span className="text-zinc-400"> do Saber</span>
           </span>
           <nav className="hidden items-center gap-6 sm:flex">
             <a href="#cursos" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Cursos</a>
@@ -531,7 +531,7 @@ export default function HomePage() {
         <div className="mx-auto max-w-7xl">
           <div className="grid gap-8 sm:grid-cols-2 lg:grid-cols-4">
             <div>
-              <span className="text-lg font-bold text-zinc-900 dark:text-white">LMS Platform</span>
+              <span className="text-lg font-bold text-zinc-900 dark:text-white">Ponto do Saber</span>
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">Plataforma de cursos online gratuita.</p>
             </div>
             <div>
@@ -562,7 +562,7 @@ export default function HomePage() {
             </div>
           </div>
           <div className="mt-10 border-t border-zinc-100 pt-6 text-center text-sm text-zinc-400 dark:border-zinc-800 dark:text-zinc-500">
-            &copy; {new Date().getFullYear()} LMS Platform. Todos os direitos reservados.
+            &copy; {new Date().getFullYear()} Ponto do Saber. Todos os direitos reservados.
           </div>
         </div>
       </footer>

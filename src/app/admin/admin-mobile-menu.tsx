@@ -61,7 +61,7 @@ export function AdminMobileMenu({ userName }: AdminMobileMenuProps) {
             </svg>
           )}
         </button>
-        <span className="text-lg font-bold text-zinc-900 dark:text-white">Admin LMS</span>
+        <span className="text-lg font-bold text-zinc-900 dark:text-white">Ponto do Saber</span>
         <span className="text-sm text-zinc-500 dark:text-zinc-400">{userName}</span>
       </div>
 
@@ -80,7 +80,7 @@ export function AdminMobileMenu({ userName }: AdminMobileMenuProps) {
         }`}
       >
         <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-          <span className="text-lg font-bold text-zinc-900 dark:text-white">Admin LMS</span>
+          <span className="text-lg font-bold text-zinc-900 dark:text-white">Ponto do Saber</span>
           <button
             onClick={() => setIsOpen(false)}
             className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"

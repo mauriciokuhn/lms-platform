@@ -6,7 +6,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation();
   return {
     title: t("terms.title"),
-    description: "Termos e condições de uso da LMS Platform.",
+    description: "Termos e condições de uso do Ponto do Saber.",
   };
 }
 
@@ -16,11 +16,11 @@ export default async function TermsPage() {
   const sections = [
     {
       title: "1. Aceitação dos Termos",
-      content: `Ao criar uma conta e utilizar a LMS Platform, você concorda com estes Termos de Uso. Se não concordar com qualquer parte destes termos, não utilize nossos serviços.`,
+      content: `Ao criar uma conta e utilizar o Ponto do Saber, você concorda com estes Termos de Uso. Se não concordar com qualquer parte destes termos, não utilize nossos serviços.`,
     },
     {
       title: "2. Descrição do Serviço",
-      content: `A LMS Platform é uma plataforma de cursos online (LMS - Learning Management System) que oferece:
+      content: `O Ponto do Saber é uma plataforma de cursos online (LMS - Learning Management System) que oferece:
         • Acesso a videoaulas e materiais didáticos
         • Questionários interativos com correção automática
         • Certificados digitais de conclusão
@@ -59,7 +59,7 @@ export default async function TermsPage() {
     },
     {
       title: "6. Certificados",
-      content: `Os certificados digitais emitidos pela LMS Platform:
+      content: `Os certificados digitais emitidos pelo Ponto do Saber:
         • São gerados automaticamente ao cumprir os requisitos (100% das aulas + nota mínima de 70% no quiz final)
         • Possuem código único de verificação
         • Podem ser verificados por terceiros através do nosso sistema de validação
@@ -68,7 +68,7 @@ export default async function TermsPage() {
     },
     {
       title: "7. Limitação de Responsabilidade",
-      content: `A LMS Platform se esforça para manter a plataforma disponível e o conteúdo atualizado, mas:
+      content: `O Ponto do Saber se esforça para manter a plataforma disponível e o conteúdo atualizado, mas:
         • Não garantimos disponibilidade ininterrupta do serviço
         • Não nos responsabilizamos por danos decorrentes do uso da plataforma
         • O conteúdo dos cursos é fornecido "como está", podendo ser atualizado sem aviso prévio

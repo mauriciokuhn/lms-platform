@@ -6,7 +6,7 @@ export async function generateMetadata(): Promise<Metadata> {
   const { t } = await getServerTranslation();
   return {
     title: t("privacy.title"),
-    description: "Política de privacidade da LMS Platform em conformidade com a LGPD.",
+    description: "Política de privacidade do Ponto do Saber em conformidade com a LGPD.",
   };
 }
 
@@ -37,7 +37,7 @@ export default async function PrivacyPage() {
     },
     {
       title: "3. Base Legal",
-      content: `O tratamento de dados pessoais realizado pela LMS Platform tem como base legal:
+      content: `O tratamento de dados pessoais realizado pelo Ponto do Saber tem como base legal:
         • Consentimento do titular (art. 7º, I da LGPD)
         • Execução de contrato (art. 7º, V da LGPD)
         • Legítimo interesse (art. 7º, IX da LGPD)

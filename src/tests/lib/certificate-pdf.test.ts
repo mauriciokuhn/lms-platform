@@ -81,7 +81,7 @@ describe("generateCertificatePdf", () => {
     expect(texts).toContain("Código");
     expect(texts).toContain("05/08/2026");
     expect(texts).toContain("CERT-ABC-123");
-    expect(texts).toContain("LMS Platform");
+    expect(texts).toContain("Ponto do Saber");
 
     // gold frame is drawn
     expect(docMock.rect).toHaveBeenCalled();
@@ -95,7 +95,7 @@ describe("generateCertificatePdf", () => {
       subject: "Certificado de conclusão de curso",
       author: "Maria Silva",
       keywords: expect.stringContaining("CERT-ABC-123"),
-      creator: "LMS Platform",
+      creator: "Ponto do Saber",
     });
   });
 

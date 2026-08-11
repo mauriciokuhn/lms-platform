@@ -22,7 +22,7 @@ export default async function AdminLayout({
       {/* Desktop Sidebar */}
       <aside className="hidden w-64 flex-col border-r border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900 lg:flex">
         <div className="flex items-center justify-between border-b border-zinc-200 px-6 py-4 dark:border-zinc-800">
-          <span className="text-lg font-bold text-zinc-900 dark:text-white">Admin LMS</span>
+          <span className="text-lg font-bold text-zinc-900 dark:text-white">Ponto do Saber</span>
           <NotificationBell />
         </div>
         <nav className="flex-1 space-y-1 p-4">
