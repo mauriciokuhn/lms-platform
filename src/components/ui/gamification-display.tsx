@@ -34,7 +34,7 @@ interface BadgeData {
 
 export function XPBar({ xp }: { xp: XPData }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-amber-200/70 bg-white p-4 shadow-sm shadow-amber-500/5 dark:border-amber-900/40">
       <div className="flex items-center justify-between">
         <div className="flex items-center gap-2">
           <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-gradient-to-br from-amber-400 to-amber-600 text-xs font-bold text-white">
@@ -68,10 +68,10 @@ export function XPBar({ xp }: { xp: XPData }) {
 
 export function StreakDisplay({ streak }: { streak: StreakData }) {
   return (
-    <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm">
+    <div className="rounded-xl border border-amber-200/70 bg-white p-4 shadow-sm shadow-amber-500/5 dark:border-amber-900/40">
       <div className="flex items-center gap-3">
-        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-orange-50">
-          <svg className="h-5 w-5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+        <div className="flex h-10 w-10 items-center justify-center rounded-xl bg-amber-50">
+          <svg className="h-5 w-5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.879 16.121A3 3 0 1012.015 11L11 14H9c0 .768.293 1.536.879 2.121z" />
           </svg>
@@ -240,7 +240,7 @@ export function GamificationWidget() {
         className={`group flex items-center gap-2 rounded-lg px-2.5 py-1.5 text-sm transition ${
           levelUp
             ? "bg-amber-50 dark:bg-amber-950/40"
-            : "hover:bg-zinc-100 dark:hover:bg-zinc-800"
+            : "hover:bg-amber-50 dark:hover:bg-amber-950/40"
         }`}
       >
         {/* Level badge */}
@@ -264,7 +264,7 @@ export function GamificationWidget() {
           <p className="mt-0.5 text-[10px] text-zinc-400">{xp.current}/{xp.nextLevelAt}</p>
         </div>
         {/* Streak */}
-        <div className="flex items-center gap-0.5 text-xs font-medium text-orange-600 dark:text-orange-400">
+        <div className="flex items-center gap-0.5 text-xs font-medium text-amber-600 dark:text-amber-400">
           <svg className="h-3.5 w-3.5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
             <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
           </svg>
@@ -275,7 +275,9 @@ export function GamificationWidget() {
       {/* Tooltip */}
       {tooltipOpen && (
         <div className="absolute right-0 top-full z-50 mt-2 w-64 max-[420px]:right-auto max-[420px]:left-0">
-          <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+          <div className="relative overflow-hidden rounded-xl border border-amber-200/70 bg-white p-4 shadow-xl dark:border-amber-900/40 dark:bg-zinc-900">
+            {/* Brand accent: amber gradient top strip */}
+            <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300" />
             <div className="mb-3 flex items-center justify-between">
               <span className="text-sm font-semibold text-zinc-900 dark:text-white">Nível {xp.level}</span>
               <span className="text-xs text-zinc-400">{xp.current} XP</span>
@@ -295,7 +297,7 @@ export function GamificationWidget() {
             <div className="space-y-2">
               <div className="flex items-center justify-between text-xs">
                 <span className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
-                  <svg className="h-3.5 w-3.5 text-orange-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <svg className="h-3.5 w-3.5 text-amber-500" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                     <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />
                   </svg>
                   Streak atual
@@ -330,7 +332,7 @@ export function GamificationWidget() {
 
             <Link
               href="/gamificacao"
-              className="mt-3 block rounded-lg bg-zinc-100 px-3 py-1.5 text-center text-xs font-medium text-zinc-600 transition hover:bg-zinc-200 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+              className="mt-3 block rounded-lg bg-amber-50 px-3 py-1.5 text-center text-xs font-medium text-amber-700 transition hover:bg-amber-100 dark:bg-amber-950/40 dark:text-amber-300 dark:hover:bg-amber-900/40"
               onClick={() => setTooltipOpen(false)}
             >
               Ver detalhes completos →
@@ -349,8 +351,8 @@ export function RankingTable({
   ranking: RankingEntry[];
   currentUserId?: string;
 }) {
-  return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm">
+  return (      <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-white shadow-sm dark:border-amber-900/40">
+        <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300" />
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-200 bg-zinc-50">
@@ -382,7 +384,7 @@ export function RankingTable({
                 <td className="px-4 py-3">
                   <span className={cn(
                     "flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold",
-                    entry.rank === 1 ? "bg-amber-100 text-amber-700" :
+                    entry.rank === 1 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm" :
                     entry.rank === 2 ? "bg-zinc-100 text-zinc-600" :
                     entry.rank === 3 ? "bg-orange-100 text-orange-700" :
                     "text-zinc-400"

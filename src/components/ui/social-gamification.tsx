@@ -164,14 +164,15 @@ export function WeeklyRanking({ ranking }: { ranking: WeeklyRankEntry[] }) {
 
   if (ranking.length === 0) {
     return (
-      <div className="rounded-xl border border-zinc-200 bg-white p-8 text-center shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+      <div className="rounded-xl border border-amber-200/60 bg-white p-8 text-center shadow-sm dark:border-amber-900/40 dark:bg-zinc-900">
         <p className="text-sm text-zinc-400 dark:text-zinc-500">Nenhum XP ganho esta semana. Estude para aparecer no ranking!</p>
       </div>
     );
   }
 
   return (
-    <div className="overflow-hidden rounded-xl border border-zinc-200 bg-white shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+    <div className="relative overflow-hidden rounded-xl border border-amber-200/60 bg-white shadow-sm dark:border-amber-900/40 dark:bg-zinc-900">
+      <div className="absolute inset-x-0 top-0 h-1 bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300" />
       <table className="w-full">
         <thead>
           <tr className="border-b border-zinc-200 bg-zinc-50 dark:border-zinc-700 dark:bg-zinc-800">
@@ -190,7 +191,7 @@ export function WeeklyRanking({ ranking }: { ranking: WeeklyRankEntry[] }) {
               >
                 <td className="px-4 py-3">
                   <span className={`flex h-6 w-6 items-center justify-center rounded-full text-xs font-bold ${
-                    entry.rank === 1 ? "bg-amber-100 text-amber-700 dark:bg-amber-900 dark:text-amber-300" :
+                    entry.rank === 1 ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm dark:from-amber-500 dark:to-amber-700" :
                     entry.rank === 2 ? "bg-zinc-100 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400" :
                     entry.rank === 3 ? "bg-orange-100 text-orange-700 dark:bg-orange-900 dark:text-orange-300" :
                     "text-zinc-400"
@@ -318,7 +319,7 @@ export function SocialSection({ className }: { className?: string }) {
             onClick={() => setActiveSocialTab(tab.id)}
             className={`flex flex-1 items-center justify-center gap-1.5 rounded-lg px-3 py-2 text-xs font-medium transition ${
               activeSocialTab === tab.id
-                ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm"
                 : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
             }`}
           >

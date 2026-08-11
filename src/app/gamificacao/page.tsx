@@ -43,10 +43,17 @@ export default function GamificacaoPage() {
 
         <main className="mx-auto max-w-5xl px-4 py-8">
           <AnimatedCard index={0}>
-            <h1 className="mb-2 text-2xl font-bold text-zinc-900 dark:text-white">Gamificação</h1>
-            <p className="mb-8 text-zinc-500 dark:text-zinc-400">
-              Acompanhe seu progresso, badges e ranking entre alunos
-            </p>
+            <div className="flex items-center gap-3">
+              <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-gradient-to-br from-amber-400 to-amber-600 text-2xl shadow-md shadow-amber-500/30 ring-2 ring-amber-200/60 dark:ring-amber-900/50">
+                🏆
+              </div>
+              <div>
+                <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">Gamificação</h1>
+                <p className="text-sm text-zinc-500 dark:text-zinc-400">
+                  Acompanhe seu progresso, badges e ranking entre alunos
+                </p>
+              </div>
+            </div>
           </AnimatedCard>
 
           {loading ? (
@@ -67,7 +74,7 @@ export default function GamificacaoPage() {
                     onClick={() => setActiveTab(tab.id)}
                     className={`flex flex-1 items-center justify-center gap-2 rounded-lg px-4 py-2.5 text-sm font-medium transition ${
                       activeTab === tab.id
-                        ? "bg-zinc-900 text-white dark:bg-white dark:text-zinc-900"
+                        ? "bg-gradient-to-br from-amber-400 to-amber-600 text-white shadow-sm"
                         : "text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800"
                     }`}
                   >
@@ -101,7 +108,7 @@ export default function GamificacaoPage() {
 
                   {ranking && ranking.totalStudents > 0 && (
                     <AnimatedCard index={4}>
-                      <div className="rounded-xl border border-zinc-200 bg-white p-4 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                      <div className="rounded-xl border border-amber-200/70 bg-gradient-to-br from-amber-50 to-white p-4 shadow-sm dark:border-amber-900/40 dark:from-amber-950/20 dark:to-zinc-900">
                         <div className="flex items-center justify-between">
                           <p className="text-sm text-zinc-500 dark:text-zinc-400">
                             Sua posição no ranking
@@ -113,7 +120,7 @@ export default function GamificacaoPage() {
                             Ver ranking completo →
                           </button>
                         </div>
-                        <p className="mt-1 text-3xl font-bold text-zinc-900 dark:text-white">
+                        <p className="mt-1 text-3xl font-bold text-amber-600 dark:text-amber-400">
                           {ranking.userRank ? `#${ranking.userRank}` : "—"}
                         </p>
                         <p className="text-xs text-zinc-400">
