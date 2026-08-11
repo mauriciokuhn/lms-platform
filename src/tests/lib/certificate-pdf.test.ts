@@ -20,6 +20,7 @@ const docMock = vi.hoisted(() => ({
   setProperties: vi.fn(),
   text: vi.fn(),
   line: vi.fn(),
+  triangle: vi.fn(),
   addImage: vi.fn(),
   save: vi.fn(),
 }));
@@ -85,6 +86,10 @@ describe("generateCertificatePdf", () => {
 
     // gold frame is drawn
     expect(docMock.rect).toHaveBeenCalled();
+
+    // brand icon (lightbulb over open book) is drawn in the header
+    expect(docMock.triangle).toHaveBeenCalled();
+    expect(docMock.circle.mock.calls.length).toBeGreaterThan(2);
   });
 
   it("sets document metadata for indexing", async () => {

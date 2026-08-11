@@ -85,6 +85,7 @@ function baseHtml(content: string) {
       border-radius: 16px;
       overflow: hidden;
       box-shadow: 0 4px 24px rgba(0,0,0,0.06);
+      border-top: 4px solid #f59e0b;
     }
     .header {
       background: linear-gradient(135deg, #18181b, #27272a);
@@ -100,6 +101,20 @@ function baseHtml(content: string) {
       color: #a1a1aa;
       font-size: 14px;
       margin-top: 4px;
+    }
+    .seal {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: linear-gradient(135deg, #fbbf24, #d97706);
+      font-size: 26px;
+      line-height: 1;
+      margin-bottom: 12px;
+      border: 3px solid rgba(255, 255, 255, 0.9);
+      box-shadow: 0 6px 18px rgba(217, 119, 6, 0.35);
     }
     .body {
       padding: 32px;
@@ -149,7 +164,8 @@ function baseHtml(content: string) {
 <body>
   <div class="container">
     <div class="header">
-      <h1>🎓 Ponto do Saber</h1>
+      <div class="seal">💡</div>
+      <h1>Ponto do Saber</h1>
       <p>Aprendizado Online</p>
     </div>
     <div class="body">
