@@ -121,16 +121,23 @@ export function CelebrationModal({
           animate={{ scale: 1, opacity: 1, y: 0 }}
           exit={{ scale: 0.5, opacity: 0, y: 50 }}
           transition={{ type: "spring", damping: 15, stiffness: 200 }}
-          className="mx-4 w-full max-w-sm rounded-2xl border border-zinc-200 bg-white p-8 text-center shadow-2xl dark:border-zinc-700 dark:bg-zinc-900"
+          className="relative mx-4 w-full max-w-sm overflow-hidden rounded-2xl border border-amber-200/70 bg-white p-8 text-center shadow-2xl shadow-amber-500/10 dark:border-amber-900/40 dark:bg-zinc-900"
           onClick={(e) => e.stopPropagation()}
         >
+          {/* Brand accent: amber gradient top strip */}
+          <div className="absolute inset-x-0 top-0 h-1.5 bg-gradient-to-r from-amber-300 via-amber-500 to-amber-300" />
           <motion.div
             initial={{ scale: 0, rotate: -180 }}
             animate={{ scale: 1, rotate: 0 }}
             transition={{ type: "spring", damping: 12, stiffness: 150, delay: 0.1 }}
-            className="mb-4 text-6xl"
+            className="relative mb-4 flex justify-center"
           >
-            {displayIcon}
+            {/* Amber glow behind the seal */}
+            <div className="absolute top-1/2 h-24 w-24 -translate-y-1/2 rounded-full bg-amber-400/30 blur-2xl" />
+            {/* Brand seal: amber gradient circle with the achievement icon */}
+            <div className="relative flex h-20 w-20 items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 text-4xl shadow-lg shadow-amber-600/40 ring-4 ring-amber-200/70 dark:ring-amber-900/50">
+              {displayIcon}
+            </div>
           </motion.div>
 
           <motion.div
@@ -143,7 +150,7 @@ export function CelebrationModal({
               <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">{description}</p>
             )}
             {xpGained && xpGained > 0 ? (
-              <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-amber-100 px-4 py-1.5 text-sm font-semibold text-amber-700 dark:bg-amber-900 dark:text-amber-300">
+              <div className="mt-4 inline-flex items-center gap-1 rounded-full bg-gradient-to-r from-amber-100 to-amber-200 px-4 py-1.5 text-sm font-semibold text-amber-700 ring-1 ring-amber-300/60 dark:from-amber-900 dark:to-amber-950 dark:text-amber-300 dark:ring-amber-700/50">
                 <span>+{xpGained} XP</span>
               </div>
             ) : null}

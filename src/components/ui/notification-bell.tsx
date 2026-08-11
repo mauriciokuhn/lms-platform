@@ -364,7 +364,7 @@ export function NotificationBell() {
           setIsOpen(next);
           if (next) setHasNew(false);
         }}
-        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-zinc-100 hover:text-zinc-700 dark:text-zinc-400 dark:hover:bg-zinc-800 dark:hover:text-zinc-200"
+        className="relative flex h-9 w-9 items-center justify-center rounded-lg text-zinc-500 transition hover:bg-amber-50 hover:text-amber-600 dark:text-zinc-400 dark:hover:bg-amber-950/40 dark:hover:text-amber-400"
         aria-label="Notificações"
       >
         <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
@@ -377,13 +377,13 @@ export function NotificationBell() {
         </svg>
 
         {unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-red-500 px-1 text-[10px] font-bold leading-none text-white animate-in zoom-in">
+          <span className="absolute -right-0.5 -top-0.5 flex min-w-[18px] items-center justify-center rounded-full bg-gradient-to-br from-amber-400 to-amber-600 px-1 text-[10px] font-bold leading-none text-white shadow-[0_0_8px_rgba(245,158,11,0.7)] ring-2 ring-white/70 animate-in zoom-in dark:ring-zinc-900/60">
             {unreadCount > 99 ? "99+" : unreadCount}
           </span>
         )}
 
         {hasNew && unreadCount > 0 && (
-          <span className="absolute -right-0.5 -top-0.5 h-[18px] w-[18px] animate-ping rounded-full bg-red-400 opacity-75" />
+          <span className="absolute -right-0.5 -top-0.5 h-[18px] w-[18px] animate-ping rounded-full bg-amber-400 opacity-75" />
         )}
       </button>
 
@@ -418,7 +418,7 @@ export function NotificationBell() {
               </div>
             ) : notifications.length === 0 ? (
               <div className="px-4 py-12 text-center">
-                <span className="text-2xl">🔔</span>
+                <span className="flex h-14 w-14 items-center justify-center rounded-full bg-gradient-to-br from-amber-100 to-amber-200 text-2xl shadow-inner dark:from-amber-950 dark:to-amber-900">🔔</span>
                 <p className="mt-2 text-sm text-zinc-500 dark:text-zinc-400">
                   Nenhuma notificação ainda
                 </p>
@@ -444,7 +444,7 @@ export function NotificationBell() {
                         {n.title}
                       </p>
                       {!n.read && (
-                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-blue-500" />
+                        <span className="mt-1.5 h-2 w-2 shrink-0 rounded-full bg-amber-500" />
                       )}
                     </div>
                     <p className="mt-0.5 text-xs text-zinc-500 dark:text-zinc-400 line-clamp-2">
