@@ -238,6 +238,29 @@ async function main() {
     check("Curso alvo encontrado", false, "nenhum curso publicado disponível");
   }
 
+  // ────────────────────────── 5. NAVEGAÇÃO DIRETA (FIX RACE CONDITION) ──────────────────────────
+  // Regressão: as 6 páginas protegidas não podem mais redirecionar o usuário
+  // logado de volta para /login (bug de race condition no useSession).
+  console.log("5️⃣  NAVEGAÇÃO DIRETA logado como aluno (fix race condition)");
+  const directRoutes = [
+    "/dashboard",
+    "/perfil",
+    "/gamificacao",
+    "/meus-cursos",
+    "/certificados",
+    "/configuracoes",
+  ];
+  for (const route of directRoutes) {
+    const r = await getWithRetry(route, aluno.jar);
+    const loc = String(r.res.headers.get("location") || "");
+    const bounced = r.res.status === 302 && loc.includes("/login");
+    check(
+      `Aluno logado → ${route} 200 (sem bounce p/ /login)`,
+      r.res.status === 200 && !bounced,
+      `status ${r.res.status}${loc ? ` -> ${loc}` : ""}`
+    );
+  }
+
   // ────────────────────────── RESUMO ──────────────────────────
   console.log(`\n━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━`);
   console.log(`RESULTADO: ${passed} ✅ | ${failed} ❌`);
