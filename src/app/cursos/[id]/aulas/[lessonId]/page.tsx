@@ -233,6 +233,17 @@ export default function LessonPage({
     };
   }, [loading, lessonId]);
 
+  // Remember this lesson as the student's last visited one for this course
+  // (used by the catalog "Continuar curso" shortcut to resume where they left off).
+  useEffect(() => {
+    if (loading || !lessonId) return;
+    try {
+      window.localStorage.setItem(`pds-last-lesson-${courseId}`, lessonId);
+    } catch {
+      // ignore
+    }
+  }, [loading, courseId, lessonId]);
+
   const toggleModule = (moduleId: string) => {
     setCollapsedModules((prev) => {
       const next = new Set(prev || []);
