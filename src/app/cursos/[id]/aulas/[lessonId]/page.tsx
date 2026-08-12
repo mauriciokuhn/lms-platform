@@ -77,6 +77,8 @@ export default function LessonPage({
   const [saving, setSaving] = useState(false);
   const { celebration, celebrate, closeCelebration } = useCelebration();
   const [showMobileMenu, setShowMobileMenu] = useState(false);
+  // Modules collapsed in the sidebar (retrair/expandir). Null until course loads.
+  const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
 
   // Find current lesson and adjacent lessons
   const allLessons = course?.modules.flatMap((m) => m.lessons) || [];
@@ -124,6 +126,29 @@ export default function LessonPage({
       await loadData();
     })();
   }, [loadData]);
+
+  // Initialize collapsed state once course loads: collapse every module
+  // except the one containing the current lesson (declutters long courses).
+  useEffect(() => {
+    if (collapsedModules !== null || !course) return;
+    const currentModuleId = course.modules.find((m) =>
+      m.lessons.some((l) => l.id === lessonId)
+    )?.id;
+    const collapsed = new Set<string>();
+    for (const mod of course.modules) {
+      if (mod.id !== currentModuleId) collapsed.add(mod.id);
+    }
+    setCollapsedModules(collapsed);
+  }, [collapsedModules, course, lessonId]);
+
+  const toggleModule = (moduleId: string) => {
+    setCollapsedModules((prev) => {
+      const next = new Set(prev || []);
+      if (next.has(moduleId)) next.delete(moduleId);
+      else next.add(moduleId);
+      return next;
+    });
+  };
 
   // Track progress every 30 seconds while watching
   useEffect(() => {
@@ -217,6 +242,65 @@ export default function LessonPage({
     return `${s}s`;
   };
 
+  // Navigation + "mark complete" buttons, reused right below the lesson
+  // content and in the sticky bottom bar.
+  const renderNavButtons = () => (
+    <>
+      <div className="flex items-center gap-2">
+        {prevLesson && (
+          <Link
+            href={`/cursos/${courseId}/aulas/${prevLesson.id}`}
+            className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
+          >
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
+            </svg>
+            Anterior
+          </Link>
+        )}
+      </div>
+
+      <div className="flex items-center gap-3">
+        {session?.user && (
+          <button
+            onClick={handleMarkComplete}
+            disabled={saving || progress.completed}
+            className={`flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-semibold transition ${
+              progress.completed
+                ? "bg-green-600 text-white"
+                : "bg-white text-zinc-900 hover:bg-zinc-200"
+            } disabled:cursor-not-allowed disabled:opacity-50`}
+          >
+            {progress.completed ? (
+              <>
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                </svg>
+                Concluída
+              </>
+            ) : saving ? (
+              "Salvando..."
+            ) : (
+              "Marcar como Concluída"
+            )}
+          </button>
+        )}
+
+        {nextLesson && (
+          <Link
+            href={`/cursos/${courseId}/aulas/${nextLesson.id}`}
+            className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200"
+          >
+            Próxima
+            <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
+            </svg>
+          </Link>
+        )}
+      </div>
+    </>
+  );
+
   const renderSidebar = (onNavigate?: () => void) => {
     return (
       <>
@@ -234,11 +318,36 @@ export default function LessonPage({
           <h2 className="text-sm font-semibold text-white">{course.title}</h2>
         </div>
         <nav className="p-4">
-          {course.modules.map((mod) => (
+          {course.modules.map((mod) => {
+            const collapsed = collapsedModules?.has(mod.id) ?? false;
+            return (
             <div key={mod.id} className="mb-4">
-              <h3 className="mb-2 text-xs font-semibold uppercase tracking-wider text-zinc-500">
-                {mod.title}
+              <h3 className="mb-2">
+              <button
+                type="button"
+                onClick={() => toggleModule(mod.id)}
+                aria-expanded={!collapsed}
+                aria-label={`${collapsed ? "Expandir" : "Retrair"} ${mod.title}`}
+                className="flex w-full items-center justify-between gap-2 rounded-lg px-1 py-1 text-left text-xs font-semibold uppercase tracking-wider text-zinc-500 transition hover:bg-zinc-800/60 hover:text-zinc-300"
+              >
+                <span className="truncate">
+                  {mod.title}
+                  <span className="ml-1.5 font-normal normal-case tracking-normal text-zinc-600">
+                    {mod.lessons.length} {mod.lessons.length === 1 ? "aula" : "aulas"}
+                  </span>
+                </span>
+                <svg
+                  className={`h-3.5 w-3.5 shrink-0 transition-transform duration-200 ${collapsed ? "" : "rotate-180"}`}
+                  fill="none"
+                  stroke="currentColor"
+                  viewBox="0 0 24 24"
+                  aria-hidden="true"
+                >
+                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                </svg>
+              </button>
               </h3>
+              {!collapsed && (
               <ul className="space-y-1">
                 {mod.lessons.map((lesson) => {
                   const isActive = lesson.id === lessonId;
@@ -269,8 +378,10 @@ export default function LessonPage({
                   );
                 })}
               </ul>
+              )}
             </div>
-          )          )}
+            );
+          })}
         </nav>
       </>
     );
@@ -279,7 +390,7 @@ export default function LessonPage({
   return (
     <div className="flex min-h-screen bg-zinc-950">
       {/* Sidebar - Course Content (Desktop) */}
-      <aside className="hidden w-80 overflow-y-auto border-r border-zinc-800 bg-zinc-900 lg:block">
+      <aside className="sticky top-0 hidden h-screen w-80 overflow-y-auto border-r border-zinc-800 bg-zinc-900 lg:block">
         {renderSidebar()}
       </aside>
 
@@ -368,6 +479,12 @@ export default function LessonPage({
                   <LessonBody body={currentLesson.contentBody} />
                 </div>
               )}
+              {/* Inline navigation right after the lesson content */}
+              <div className="mx-auto mt-10 max-w-3xl border-t border-zinc-800 pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {renderNavButtons()}
+                </div>
+              </div>
             </div>
           ) : currentLesson.contentType === "PDF" ? (
             <div className="mx-auto max-w-3xl px-4 py-12 text-center">
@@ -403,11 +520,23 @@ export default function LessonPage({
                   Ver Link Externo
                 </a>
               )}
+              {/* Inline navigation right after the lesson content */}
+              <div className="mt-10 border-t border-zinc-800 pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {renderNavButtons()}
+                </div>
+              </div>
             </div>
           ) : currentLesson.contentType === "TEXT" ? (
             <div className="mx-auto max-w-3xl px-4 py-12">
               <h2 className="mb-4 text-xl font-semibold text-white">{currentLesson.title}</h2>
               <LessonBody body={currentLesson.contentBody} />
+              {/* Inline navigation right after the lesson content */}
+              <div className="mt-10 border-t border-zinc-800 pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {renderNavButtons()}
+                </div>
+              </div>
             </div>
           ) : (
             <div className="mx-auto max-w-3xl px-4 py-12 text-center">
@@ -433,65 +562,20 @@ export default function LessonPage({
                   </svg>
                 </a>
               )}
+              {/* Inline navigation right after the lesson content */}
+              <div className="mt-10 border-t border-zinc-800 pt-6">
+                <div className="flex flex-col gap-3 sm:flex-row sm:items-center sm:justify-between">
+                  {renderNavButtons()}
+                </div>
+              </div>
             </div>
           )}
         </div>
 
-        {/* Bottom Bar - Navigation & Complete */}
-        <div className="border-t border-zinc-800 bg-zinc-900 px-4 py-3">
+        {/* Bottom Bar - Navigation & Complete (sticky: always visible) */}
+        <div className="sticky bottom-0 z-20 border-t border-zinc-800 bg-zinc-900 px-4 py-3">
           <div className="mx-auto flex max-w-5xl items-center justify-between">
-            <div className="flex items-center gap-2">
-              {prevLesson && (
-                <Link
-                  href={`/cursos/${courseId}/aulas/${prevLesson.id}`}
-                  className="flex items-center gap-2 rounded-lg border border-zinc-700 px-4 py-2 text-sm text-zinc-300 hover:bg-zinc-800"
-                >
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M15 19l-7-7 7-7" />
-                  </svg>
-                  Anterior
-                </Link>
-              )}
-            </div>
-
-            <div className="flex items-center gap-3">
-              {session?.user && (
-                <button
-                  onClick={handleMarkComplete}
-                  disabled={saving || progress.completed}
-                  className={`flex items-center gap-2 rounded-lg px-6 py-2 text-sm font-semibold transition ${
-                    progress.completed
-                      ? "bg-green-600 text-white"
-                      : "bg-white text-zinc-900 hover:bg-zinc-200"
-                  } disabled:cursor-not-allowed disabled:opacity-50`}
-                >
-                  {progress.completed ? (
-                    <>
-                      <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                        <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
-                      </svg>
-                      Concluída
-                    </>
-                  ) : saving ? (
-                    "Salvando..."
-                  ) : (
-                    "Marcar como Concluída"
-                  )}
-                </button>
-              )}
-
-              {nextLesson && (
-                <Link
-                  href={`/cursos/${courseId}/aulas/${nextLesson.id}`}
-                  className="flex items-center gap-2 rounded-lg bg-white px-4 py-2 text-sm font-semibold text-zinc-900 hover:bg-zinc-200"
-                >
-                  Próxima
-                  <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9 5l7 7-7 7" />
-                  </svg>
-                </Link>
-              )}
-            </div>
+            {renderNavButtons()}
           </div>
         </div>
       </div>
