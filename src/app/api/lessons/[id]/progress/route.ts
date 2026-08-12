@@ -244,6 +244,7 @@ export async function POST(
                       lessons: { select: { id: true } },
                     },
                   },
+                  instructor: { select: { id: true, name: true } },
                 },
               },
             },
@@ -275,6 +276,20 @@ export async function POST(
               completedAt: new Date(),
             },
           });
+
+          // 🎓 Notify the course instructor that a student finished the course
+          if (course.instructor) {
+            const student = await db.user.findUnique({
+              where: { id: session.user.id },
+              select: { name: true, email: true },
+            });
+            await notifyUser(course.instructor.id, {
+              type: "ACHIEVEMENT_EARNED",
+              title: "Aluno concluiu o curso! 🎓",
+              message: `${student?.name || student?.email || "Um aluno"} concluiu 100% de "${course.title}".`,
+              link: `/instrutor/cursos/${course.id}`,
+            });
+          }
         }
       }
     }

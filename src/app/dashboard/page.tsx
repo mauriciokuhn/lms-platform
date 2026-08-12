@@ -92,6 +92,7 @@ export default function DashboardPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificatesCount, setCertificatesCount] = useState(0);
+  const [dailyProgress, setDailyProgress] = useState({ completedToday: 0, goal: 3 });
   const [loading, setLoading] = useState(true);
   const { progress: gamification, loading: gamificationLoading, refresh: refreshGamification } = useGamificationContext();
   const { resumeCourse, continueLoading } = useResumeCourse();
@@ -99,9 +100,10 @@ export default function DashboardPage() {
   // `silent` skips the welcome toast — used by the SSE real-time refreshes.
   const loadData = useCallback(async (silent = false) => {
     try {
-      const [enrollRes, certRes] = await Promise.all([
+      const [enrollRes, certRes, dailyRes] = await Promise.all([
         fetch("/api/enrollments"),
         fetch("/api/certificates"),
+        fetch("/api/progress/daily"),
       ]);
       if (enrollRes.ok) {
         const enrollData = await enrollRes.json();
@@ -113,6 +115,9 @@ export default function DashboardPage() {
       if (certRes.ok) {
         const certData = await certRes.json();
         setCertificatesCount(certData.length);
+      }
+      if (dailyRes.ok) {
+        setDailyProgress(await dailyRes.json());
       }
     } catch (err) {
       console.error(err);
@@ -210,6 +215,31 @@ export default function DashboardPage() {
                   <p className="mt-2 text-3xl font-bold text-zinc-900 dark:text-white">{stat.value}</p>
                 </div>
               ))}
+            </div>
+
+            {/* Daily Goal */}
+            <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Meta Diária</p>
+                  <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                    {dailyProgress.completedToday}
+                    <span className="text-base font-medium text-zinc-400"> de {dailyProgress.goal} aulas hoje</span>
+                  </p>
+                </div>
+                <span className="text-3xl">{dailyProgress.completedToday >= dailyProgress.goal ? "🎉" : "🎯"}</span>
+              </div>
+              <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
+                <div
+                  className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
+                  style={{ width: `${Math.min(100, (dailyProgress.completedToday / dailyProgress.goal) * 100)}%` }}
+                />
+              </div>
+              <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                {dailyProgress.completedToday >= dailyProgress.goal
+                  ? "Meta atingida! Continue assim 🚀"
+                  : `Faltam ${dailyProgress.goal - dailyProgress.completedToday} aula(s) para bater a meta de hoje`}
+              </p>
             </div>
 
             {enrollments.length > 0 && (
