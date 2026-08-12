@@ -1,10 +1,11 @@
 "use client";
 
-import { useCallback, useEffect, useState, use } from "react";
+import { useCallback, useEffect, useState, useRef, use } from "react";
 import { useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
 import Link from "next/link";
 import { showSuccess } from "@/components/ui/toast-utils";
+import { useGamificationContext } from "@/lib/contexts/gamification-context";
 import { PlayerWrapper } from "@/components/ui/player-wrapper";
 import { useCelebration, CelebrationModal } from "@/components/ui/celebration";
 
@@ -77,6 +78,9 @@ export default function LessonPage({
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const { celebration, celebrate, closeCelebration } = useCelebration();
+  const { refetchProgress, progress: gamificationProgress } = useGamificationContext();
+  // Last known level — used to detect level-up and show a real XP toast.
+  const prevLevelRef = useRef<number | null>(null);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   // Modules collapsed in the sidebar (retrair/expandir). Null until course loads.
   const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
@@ -148,6 +152,13 @@ export default function LessonPage({
       await loadData();
     })();
   }, [loadData]);
+
+  // Remember the current level so we can detect level-ups on completion.
+  useEffect(() => {
+    if (gamificationProgress && prevLevelRef.current === null) {
+      prevLevelRef.current = gamificationProgress.xp.level;
+    }
+  }, [gamificationProgress]);
 
   // Initialize collapsed state: restore from localStorage when present,
   // otherwise collapse every module except the current lesson's module.
@@ -304,6 +315,14 @@ export default function LessonPage({
           return next;
         });
         showSuccess("Aula concluída!", `${currentLesson?.title} — XP ganho: +50 🎉`);
+        // Refresh gamification data and toast when the student levels up
+        const fresh = await refetchProgress();
+        if (fresh && prevLevelRef.current !== null && fresh.xp.level > prevLevelRef.current) {
+          showSuccess(`Subiu para o nível ${fresh.xp.level}! 🏆`, "Continue estudando para ganhar ainda mais XP.");
+        }
+        if (fresh) {
+          prevLevelRef.current = fresh.xp.level;
+        }
         // Show celebration modal
         celebrate({
           type: "xp",

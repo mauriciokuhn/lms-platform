@@ -7,6 +7,8 @@ import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { getRoleHome } from "@/lib/role-home";
 import { LocaleSwitcher } from "@/lib/i18n/locale-switcher";
+import { useResumeCourse } from "@/lib/hooks/use-resume-course";
+import { ResumeCourseButton } from "@/components/ui/resume-course-button";
 
 interface Course {
   id: string;
@@ -40,6 +42,14 @@ export default function HomePage() {
   const [activeFaq, setActiveFaq] = useState<number | null>(null);
   const [canScrollLeft, setCanScrollLeft] = useState(false);
   const [canScrollRight, setCanScrollRight] = useState(true);
+  // In-progress courses for logged-in students ("Continue de onde parou")
+  const [activeCourses, setActiveCourses] = useState<{
+    id: string;
+    title: string;
+    category: string | null;
+    progress: { percentage: number; completed: number; total: number };
+  }[]>([]);
+  const { resumeCourse, continueLoading } = useResumeCourse();
   const carouselRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
 
@@ -88,6 +98,33 @@ export default function HomePage() {
     }
     loadData();
   }, []);
+
+  // Load in-progress enrollments for logged-in students (home "Continue de onde parou")
+  useEffect(() => {
+    if (!session?.user) {
+      setActiveCourses([]);
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch("/api/enrollments");
+        if (!res.ok) return;
+        const data = await res.json();
+        const active = (Array.isArray(data) ? data : [])
+          .filter((e) => e?.status === "ACTIVE" && e?.progress?.percentage < 100)
+          .map((e) => ({
+            id: e.course.id,
+            title: e.course.title,
+            category: e.course.category || null,
+            progress: e.progress,
+          }))
+          .slice(0, 3);
+        setActiveCourses(active);
+      } catch {
+        // silent — section simply doesn't render
+      }
+    })();
+  }, [session]);
 
   const testimonials = [
     { name: "Maria Silva", role: "Aluna", text: "Consegui aprender programação do zero e mudei de carreira! O certificado abriu portas incríveis.", avatar: "👩‍💻" },
@@ -218,6 +255,58 @@ export default function HomePage() {
           </div>
         </div>
       </section>
+
+      {/* ─── CONTINUE LEARNING ─── */}
+      {session?.user && activeCourses.length > 0 && (
+        <section className="border-t border-zinc-100 px-4 py-12 dark:border-zinc-800">
+          <div className="mx-auto max-w-7xl">
+            <div className="mb-6 flex items-center justify-between">
+              <div>
+                <h2 className="text-xl font-bold text-zinc-900 dark:text-white">Continue de onde parou</h2>
+                <p className="mt-0.5 text-sm text-zinc-500 dark:text-zinc-400">Retome seus cursos em andamento</p>
+              </div>
+              <Link
+                href="/dashboard"
+                className="hidden sm:inline-flex items-center gap-1 text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors"
+              >
+                Ir ao Dashboard
+                <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 7l5 5m0 0l-5 5m5-5H6" /></svg>
+              </Link>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+              {activeCourses.map((c) => (
+                <Link
+                  key={c.id}
+                  href={`/cursos/${c.id}`}
+                  className="group rounded-xl border border-zinc-200 bg-white p-5 shadow-sm transition-all hover:-translate-y-0.5 hover:shadow-md dark:border-zinc-700 dark:bg-zinc-900"
+                >
+                  <div className="mb-3 flex aspect-video items-center justify-center rounded-lg bg-gradient-to-br from-amber-50 to-amber-100 dark:from-amber-950 dark:to-amber-900">
+                    <span className="text-3xl">{categoryIcons[c.category || ""] || "📚"}</span>
+                  </div>
+                  <h3 className="line-clamp-1 font-semibold text-zinc-900 dark:text-white">{c.title}</h3>
+                  <div className="mt-3">
+                    <div className="flex items-center justify-between text-xs text-zinc-500 dark:text-zinc-400">
+                      <span>Progresso</span>
+                      <span>{c.progress.percentage}%</span>
+                    </div>
+                    <div className="mt-1 h-2 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
+                      <div
+                        className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
+                        style={{ width: `${c.progress.percentage}%` }}
+                      />
+                    </div>
+                  </div>
+                  <ResumeCourseButton
+                    courseId={c.id}
+                    loading={continueLoading === c.id}
+                    onResume={resumeCourse}
+                  />
+                </Link>
+              ))}
+            </div>
+          </div>
+        </section>
+      )}
 
       {/* ─── CATEGORY CAROUSEL ─── */}
       {!loading && courses.length > 0 && (() => {

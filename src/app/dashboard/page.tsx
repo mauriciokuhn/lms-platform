@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -93,35 +93,60 @@ export default function DashboardPage() {
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificatesCount, setCertificatesCount] = useState(0);
   const [loading, setLoading] = useState(true);
-  const { progress: gamification, loading: gamificationLoading } = useGamificationContext();
+  const { progress: gamification, loading: gamificationLoading, refresh: refreshGamification } = useGamificationContext();
   const { resumeCourse, continueLoading } = useResumeCourse();
+
+  // `silent` skips the welcome toast — used by the SSE real-time refreshes.
+  const loadData = useCallback(async (silent = false) => {
+    try {
+      const [enrollRes, certRes] = await Promise.all([
+        fetch("/api/enrollments"),
+        fetch("/api/certificates"),
+      ]);
+      if (enrollRes.ok) {
+        const enrollData = await enrollRes.json();
+        setEnrollments(enrollData);
+        if (!silent && enrollData.length > 0 && enrollData[0].enrolledAt) {
+          toast.success("Dashboard atualizado!", { description: "Seus cursos foram carregados." });
+        }
+      }
+      if (certRes.ok) {
+        const certData = await certRes.json();
+        setCertificatesCount(certData.length);
+      }
+    } catch (err) {
+      console.error(err);
+      if (!silent) toast.error("Erro ao carregar dashboard");
+    } finally {
+      setLoading(false);
+    }
+  }, []);
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "loading") return;
-
-    async function loadData() {
-      try {
-        const [enrollRes, certRes] = await Promise.all([
-          fetch("/api/enrollments"),
-          fetch("/api/certificates"),
-        ]);
-        if (enrollRes.ok) {
-          const enrollData = await enrollRes.json();
-          setEnrollments(enrollData);
-          if (enrollData.length > 0 && enrollData[0].enrolledAt) {
-            toast.success("Dashboard atualizado!", { description: "Seus cursos foram carregados." });
-          }
-        }
-        if (certRes.ok) {
-          const certData = await certRes.json();
-          setCertificatesCount(certData.length);
-        }
-      } catch (err) { console.error(err); toast.error("Erro ao carregar dashboard"); }
-      finally { setLoading(false); }
-    }
     loadData();
-  }, [session, router]);
+  }, [status, router, loadData]);
+
+  // Real-time progress: refresh enrollments when a lesson is completed
+  // anywhere (SSE "LESSON_COMPLETED" event broadcast by the server).
+  useEffect(() => {
+    if (!session?.user) return;
+    const es = new EventSource("/api/events/subscribe");
+    es.onmessage = (e) => {
+      try {
+        const event = JSON.parse(e.data);
+        if (event.type === "notification" && event.payload?.type === "LESSON_COMPLETED") {
+          loadData(true);
+          refreshGamification();
+        }
+      } catch {
+        // silent
+      }
+    };
+    es.onerror = () => {};
+    return () => es.close();
+  }, [session, loadData, refreshGamification]);
 
   if (!session?.user) return null;
 
