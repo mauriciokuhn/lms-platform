@@ -189,6 +189,50 @@ export default function LessonPage({
     }
   }, [collapsedModules, course]);
 
+  // Restore the scroll position where the student stopped in this lesson.
+  useEffect(() => {
+    if (loading) return;
+    const key = `pds-lesson-scroll-${lessonId}`;
+    try {
+      const saved = parseInt(window.localStorage.getItem(key) || "0", 10);
+      if (saved > 0) {
+        // Small delay so the content (and video iframe) settles first.
+        const timer = setTimeout(() => window.scrollTo({ top: saved }), 100);
+        return () => clearTimeout(timer);
+      }
+    } catch {
+      // corrupted/blocked storage — ignore
+    }
+  }, [loading, lessonId]);
+
+  // Save the scroll position (debounced) while reading and on leave.
+  useEffect(() => {
+    if (loading) return;
+    const key = `pds-lesson-scroll-${lessonId}`;
+    let timer: ReturnType<typeof setTimeout> | null = null;
+    const onScroll = () => {
+      if (timer) clearTimeout(timer);
+      timer = setTimeout(() => {
+        try {
+          window.localStorage.setItem(key, String(window.scrollY));
+        } catch {
+          // ignore
+        }
+      }, 250);
+    };
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => {
+      window.removeEventListener("scroll", onScroll);
+      try {
+        if (window.scrollY > 0) {
+          window.localStorage.setItem(key, String(window.scrollY));
+        }
+      } catch {
+        // ignore
+      }
+    };
+  }, [loading, lessonId]);
+
   const toggleModule = (moduleId: string) => {
     setCollapsedModules((prev) => {
       const next = new Set(prev || []);

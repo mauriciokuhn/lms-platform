@@ -3,6 +3,7 @@
 import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
+import { useSession } from "next-auth/react";
 import { StarRating } from "@/components/ui/star-rating";
 import { TopRatedBadge } from "@/components/ui/top-rated-badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -68,8 +69,11 @@ function CoursesContent() {
   const searchParams = useSearchParams();
   const router = useRouter();
 
+  const { data: session } = useSession();
   const [courses, setCourses] = useState<Course[]>([]);
   const [loading, setLoading] = useState(true);
+  // courseId -> enrollment progress (only for logged-in students)
+  const [enrollments, setEnrollments] = useState<Record<string, { percentage: number; completed: number; total: number }>>({});
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("cat") || "");
   const [sortBy, setSortBy] = useState<SortBy>(
@@ -179,6 +183,34 @@ function CoursesContent() {
     }
     loadData();
   }, []);
+
+  // Load the current user's enrollments (with progress) to badge their courses
+  useEffect(() => {
+    if (!session?.user) {
+      setEnrollments({});
+      return;
+    }
+    (async () => {
+      try {
+        const res = await fetch("/api/enrollments");
+        if (!res.ok) return;
+        const data = await res.json();
+        const map: Record<string, { percentage: number; completed: number; total: number }> = {};
+        for (const e of Array.isArray(data) ? data : []) {
+          if (e?.course?.id && e?.progress) {
+            map[e.course.id] = {
+              percentage: e.progress.percentage ?? 0,
+              completed: e.progress.completed ?? 0,
+              total: e.progress.total ?? 0,
+            };
+          }
+        }
+        setEnrollments(map);
+      } catch (err) {
+        console.error("Error loading enrollments:", err);
+      }
+    })();
+  }, [session]);
 
   const minRating = ratingFilter ? parseInt(ratingFilter) : 0;
 
@@ -480,7 +512,9 @@ function CoursesContent() {
           </div>
         ) : viewMode === "list" ? (
           <div className="space-y-4">
-            {filteredCourses.slice(0, visibleCount).map((course, idx) => (
+            {filteredCourses.slice(0, visibleCount).map((course, idx) => {
+              const enrollInfo = enrollments[course.id];
+              return (
               <Link
                 key={course.id}
                 href={`/cursos/${course.id}`}
@@ -507,23 +541,46 @@ function CoursesContent() {
                     </div>
                     <p className="mt-1 line-clamp-1 text-sm text-zinc-500 dark:text-zinc-400">{course.description}</p>
                   </div>
-                  <div className="mt-2 flex items-center gap-4 text-xs text-zinc-400">
-                    <span>{course.lessonsCount} aulas</span>
-                    <span>{course.modulesCount} módulos</span>
-                    <span className={getDurationColor(course.lessonsCount)}>{getDurationLabel(course.lessonsCount)}</span>
-                    {course.averageRating && (
-                      <span className="flex items-center gap-1 text-amber-500">
-                        ⭐ {course.averageRating.toFixed(1)} ({course.totalReviews})
-                      </span>
-                    )}
-                    <span>{course.studentsCount} alunos</span>
-                    {course.instructor && (
-                      <span className="text-zinc-400">por {course.instructor.name}</span>
+                  <div>
+                    <div className="mt-2 flex items-center gap-4 text-xs text-zinc-400">
+                      <span>{course.lessonsCount} aulas</span>
+                      <span>{course.modulesCount} módulos</span>
+                      <span className={getDurationColor(course.lessonsCount)}>{getDurationLabel(course.lessonsCount)}</span>
+                      {course.averageRating && (
+                        <span className="flex items-center gap-1 text-amber-500">
+                          ⭐ {course.averageRating.toFixed(1)} ({course.totalReviews})
+                        </span>
+                      )}
+                      <span>{course.studentsCount} alunos</span>
+                      {course.instructor && (
+                        <span className="text-zinc-400">por {course.instructor.name}</span>
+                      )}
+                    </div>
+                    {enrollInfo && (
+                      <div className="mt-3 flex items-center gap-3">
+                        <span className="rounded-full bg-green-100 px-2.5 py-0.5 text-[10px] font-semibold text-green-700 dark:bg-green-900/40 dark:text-green-400">
+                          ✅ Matriculado
+                        </span>
+                        <div
+                          className="h-1.5 w-32 overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                          role="progressbar"
+                          aria-valuenow={enrollInfo.percentage}
+                          aria-valuemin={0}
+                          aria-valuemax={100}
+                          aria-valuetext={`${enrollInfo.percentage}%`}
+                        >
+                          <div className="h-full rounded-full bg-green-500" style={{ width: `${enrollInfo.percentage}%` }} />
+                        </div>
+                        <span className="text-xs text-zinc-500 dark:text-zinc-400">
+                          {enrollInfo.completed}/{enrollInfo.total} aulas · {enrollInfo.percentage}%
+                        </span>
+                      </div>
                     )}
                   </div>
                 </div>
               </Link>
-            ))}
+              );
+            })}
           </div>
         ) : (
           /* ─── GRID VIEW ─── */
@@ -532,6 +589,7 @@ function CoursesContent() {
               // Hoisted so TS narrowing survives inside the onClick/onKeyDown
               // closures (and avoids repeating course.instructor access).
               const instructor = course.instructor;
+              const enrollInfo = enrollments[course.id];
               return (
               <Link
                 key={course.id}
@@ -585,6 +643,24 @@ function CoursesContent() {
                   <span>{course.modulesCount} módulos</span>
                   <span className={getDurationColor(course.lessonsCount)}>{getDurationLabel(course.lessonsCount)}</span>
                 </div>
+                {enrollInfo && (
+                  <div className="mt-3">
+                    <div className="mb-1 flex items-center justify-between text-[11px]">
+                      <span className="font-semibold text-green-600 dark:text-green-400">✅ Matriculado</span>
+                      <span className="text-zinc-500 dark:text-zinc-400">{enrollInfo.percentage}% concluído</span>
+                    </div>
+                    <div
+                      className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                      role="progressbar"
+                      aria-valuenow={enrollInfo.percentage}
+                      aria-valuemin={0}
+                      aria-valuemax={100}
+                      aria-valuetext={`${enrollInfo.percentage}%`}
+                    >
+                      <div className="h-full rounded-full bg-green-500" style={{ width: `${enrollInfo.percentage}%` }} />
+                    </div>
+                  </div>
+                )}
                 {course.averageRating && (
                   <div className="mt-2">
                     <StarRating rating={course.averageRating} size="sm" showValue totalReviews={course.totalReviews} />
