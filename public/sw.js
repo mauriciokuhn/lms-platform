@@ -198,7 +198,14 @@ self.addEventListener('notificationclick', (event) => {
 
   if (event.action === 'close') return;
 
-  const urlToOpen = event.notification.data?.url || '/';
+  let urlToOpen = event.notification.data?.url || '/';
+  // Resolve relative URLs (e.g. "/cursos") against the SW origin, since
+  // clients.openWindow requires an absolute URL.
+  try {
+    urlToOpen = new URL(urlToOpen, self.location.origin).href;
+  } catch {
+    urlToOpen = self.location.origin;
+  }
 
   event.waitUntil(
     self.clients.matchAll({

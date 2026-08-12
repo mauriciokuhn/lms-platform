@@ -3,6 +3,7 @@ import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { notifyUser } from "@/lib/event-bus";
 import { sendStreakAtRiskEmail } from "@/lib/email";
+import { notifyUserPush } from "@/lib/push-notifications";
 import { logger } from "@/lib/logger";
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -128,6 +129,15 @@ export async function POST() {
         error: emailError instanceof Error ? emailError.message : String(emailError),
       });
     }
+
+    // 📲 Also push to the browser (all subscribed devices). notifyUserPush
+    // never throws — failures are handled internally and logged there.
+    await notifyUserPush(session.user.id, {
+      title: "Streak em risco! 🔥",
+      body: `Complete uma aula hoje para manter seu streak de ${status.streak} ${status.streak === 1 ? "dia" : "dias"}. Não deixe a sequência quebrar!`,
+      url: "cursos",
+      tag: "streak-risk",
+    });
 
     return NextResponse.json({ notified: true, atRisk: true });
   } catch (error) {

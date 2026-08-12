@@ -140,13 +140,40 @@ interface RankingEntry {
 // HEADER WIDGET
 // ──────────────────────────────────────────
 
+interface WeeklyRanking {
+  userRank: number | null;
+  userXpGained: number;
+  totalParticipants: number;
+}
+
 export function GamificationWidget() {
   const { progress, ranking, loading } = useGamificationContext();
   const [tooltipOpen, setTooltipOpen] = useState(false);
   const [levelUp, setLevelUp] = useState(false);
+  const [weekly, setWeekly] = useState<WeeklyRanking | null>(null);
   const ref = useRef<HTMLDivElement>(null);
   const prevLevelRef = useRef<number | null>(null);
   const confettiFiredRef = useRef(false);
+
+  // Weekly ranking (cached 60s server-side) — shown in the tooltip
+  useEffect(() => {
+    let active = true;
+    fetch("/api/social/weekly-ranking")
+      .then((r) => (r.ok ? r.json() : null))
+      .then((data) => {
+        if (active && data) {
+          setWeekly({
+            userRank: data.userRank ?? null,
+            userXpGained: data.userXpGained ?? 0,
+            totalParticipants: data.totalParticipants ?? 0,
+          });
+        }
+      })
+      .catch(() => {});
+    return () => {
+      active = false;
+    };
+  }, []);
 
   // Close tooltip on click outside
   useEffect(() => {
@@ -321,12 +348,32 @@ export function GamificationWidget() {
               {ranking?.userRank && (
                 <div className="flex items-center justify-between text-xs">
                   <span className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
-                    📊 Ranking
+                    📊 Ranking geral
                   </span>
                   <span className="font-semibold text-zinc-900 dark:text-white">
                     #{ranking.userRank} de {ranking.totalStudents}
                   </span>
                 </div>
+              )}
+              {weekly && weekly.totalParticipants > 0 && (
+                <>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+                      🏅 Ranking da semana
+                    </span>
+                    <span className="font-semibold text-zinc-900 dark:text-white">
+                      {weekly.userRank ? `#${weekly.userRank} de ${weekly.totalParticipants}` : "—"}
+                    </span>
+                  </div>
+                  <div className="flex items-center justify-between text-xs">
+                    <span className="flex items-center gap-1.5 text-zinc-500 dark:text-zinc-400">
+                      ⚡ XP na semana
+                    </span>
+                    <span className="font-semibold text-amber-600 dark:text-amber-400">
+                      +{weekly.userXpGained}
+                    </span>
+                  </div>
+                </>
               )}
             </div>
 

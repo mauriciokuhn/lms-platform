@@ -312,6 +312,45 @@ export async function sendStreakAtRiskEmail(email: string, name: string, streak:
 }
 
 /**
+ * Send monthly study summary email — stats for the previous calendar month.
+ */
+export async function sendMonthlySummaryEmail(
+  email: string,
+  name: string,
+  stats: {
+    monthLabel: string;
+    lessons: number;
+    xp: number;
+    badges: number;
+    coursesCompleted: number;
+    streak: number;
+  }
+) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const content = `
+    <p>Olá, <strong>${name || "aluno"}</strong>! 📊</p>
+    <p>Seu resumo de estudos de <strong>${stats.monthLabel}</strong>:</p>
+    <div class="details">
+      <p>📚 <strong>${stats.lessons}</strong> ${stats.lessons === 1 ? "aula concluída" : "aulas concluídas"}</p>
+      <p>⭐ <strong>+${stats.xp} XP</strong> ganhos no mês</p>
+      <p>🏅 <strong>${stats.badges}</strong> ${stats.badges === 1 ? "conquista desbloqueada" : "conquistas desbloqueadas"}</p>
+      ${stats.coursesCompleted > 0 ? `<p>🎓 <strong>${stats.coursesCompleted}</strong> ${stats.coursesCompleted === 1 ? "curso concluído" : "cursos concluídos"}</p>` : ""}
+      ${stats.streak > 0 ? `<p>🔥 Streak atual de <strong>${stats.streak}</strong> ${stats.streak === 1 ? "dia" : "dias"}</p>` : ""}
+    </div>
+    <p>Continue assim — cada aula conta para o seu progresso! 🚀</p>
+    <p style="text-align: center;">
+      <a href="${baseUrl}/dashboard" class="btn">Ver Meu Dashboard</a>
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `📊 Seu resumo mensal — ${stats.monthLabel}`,
+    html: baseHtml(content),
+  });
+}
+
+/**
  * Send course rejected notification
  */
 export async function sendCourseRejectedEmail(email: string, name: string, courseTitle: string, reason: string) {

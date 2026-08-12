@@ -3,16 +3,17 @@
  *
  * Provides functions to:
  * - Save push subscription from browser
- * - Send push notifications to a user
+ * - Send push notifications to a user (all their devices)
  * - Generate VAPID keys for push messaging
  *
  * Requires:
- * - web-push npm package
+ * - web-push npm package (installed)
  * - NEXT_PUBLIC_VAPID_PUBLIC_KEY env var
  * - VAPID_PRIVATE_KEY env var
  * - VAPID_EMAIL env var
  */
 
+import webpush from "web-push";
 import { db } from "@/lib/db";
 import { logger } from "@/lib/logger";
 
@@ -35,53 +36,38 @@ interface PushPayload {
   tag?: string;
 }
 
-/** Normalized shape of the web-push API (all members optional). */
-interface WebPushApi {
-  setVapidDetails?: (...args: string[]) => void;
-  sendNotification?: (
-    subscription: PushSubscriptionData,
-    payload: string,
-    options?: { TTL?: number }
-  ) => Promise<void>;
-  generateVAPIDKeys?: () => { publicKey: string; privateKey: string };
-}
+// ──────────────────────────────────────────
+// VAPID configuration (lazy, so env can be read at call time)
+// ──────────────────────────────────────────
 
-interface WebPushModule {
-  default: WebPushApi | null;
-  setVapidDetails?: WebPushApi["setVapidDetails"];
-  sendNotification?: WebPushApi["sendNotification"];
-  generateVAPIDKeys?: WebPushApi["generateVAPIDKeys"];
-}
+let vapidConfigured = false;
 
-// Dynamically import web-push (optional dependency)
-let webpushModule: WebPushModule | null = null;
-async function getWebpush(): Promise<WebPushApi | null> {
-  if (!webpushModule) {
-    try {
-      // @ts-expect-error -- web-push is an optional dependency, not installed
-      webpushModule = (await import("web-push")) as WebPushModule;
-    } catch {
-      webpushModule = null;
-    }
+function ensureVapid() {
+  if (vapidConfigured) return true;
+  const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
+  const privateKey = process.env.VAPID_PRIVATE_KEY;
+  if (!publicKey || !privateKey) return false;
+  try {
+    webpush.setVapidDetails(
+      process.env.VAPID_EMAIL || "mailto:admin@pontodosaber.com.br",
+      publicKey,
+      privateKey
+    );
+    vapidConfigured = true;
+    return true;
+  } catch {
+    return false;
   }
-  if (!webpushModule) return null;
-  const api = webpushModule.default || webpushModule;
-  return {
-    setVapidDetails: api.setVapidDetails,
-    sendNotification: api.sendNotification,
-    generateVAPIDKeys: api.generateVAPIDKeys,
-  };
 }
 
 // ──────────────────────────────────────────
-// Save subscription (stored in UserSettings as JSON)
+// Save subscription (stored in the PushSubscription model)
 // ──────────────────────────────────────────
 
 export async function saveSubscription(
   userId: string,
   subscription: PushSubscriptionData
 ) {
-  // Store subscription in the PushSubscription model
   try {
     await db.pushSubscription.upsert({
       where: { endpoint: subscription.endpoint },
@@ -90,25 +76,37 @@ export async function saveSubscription(
         endpoint: subscription.endpoint,
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       },
       update: {
         p256dh: subscription.keys.p256dh,
         auth: subscription.keys.auth,
-        userAgent: typeof navigator !== "undefined" ? navigator.userAgent : null,
       },
     });
     logger.info("Push subscription saved", { userId });
-  } catch {
-    logger.warn("Push subscription model not yet migrated. Run: npx prisma generate && npx prisma db push");
-    logger.info("Push subscription not persisted", { endpoint: subscription.endpoint });
+    return { success: true };
+  } catch (error) {
+    logger.warn("Failed to persist push subscription", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { success: false };
   }
-
-  return { success: true };
 }
 
 // ──────────────────────────────────────────
-// Send push notification
+// Remove subscription (user opted out / endpoint expired)
+// ──────────────────────────────────────────
+
+export async function removeSubscription(endpoint: string) {
+  try {
+    await db.pushSubscription.deleteMany({ where: { endpoint } });
+    return { success: true };
+  } catch {
+    return { success: false };
+  }
+}
+
+// ──────────────────────────────────────────
+// Send push notification to a single subscription
 // ──────────────────────────────────────────
 
 export async function sendPushNotification(
@@ -116,61 +114,80 @@ export async function sendPushNotification(
   payload: PushPayload
 ) {
   try {
-    // Try to use web-push if available
-    const webpush = await getWebpush();
-
-    if (!webpush || !process.env.VAPID_PRIVATE_KEY) {
-      logger.info("Push notification (simulated)", { title: payload.title });
+    if (!ensureVapid()) {
+      logger.info("Push notification (simulated — VAPID not configured)", {
+        title: payload.title,
+      });
       return { success: true, simulated: true };
     }
 
-    webpush.setVapidDetails?.(
-      process.env.VAPID_EMAIL || "mailto:admin@lms.com",
-      process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY || "",
-      process.env.VAPID_PRIVATE_KEY
+    await webpush.sendNotification(
+      subscription,
+      JSON.stringify(payload),
+      { TTL: 86400 } // 24h
     );
-
-    const sendFn = webpush.sendNotification;
-    if (!sendFn) {
-      logger.info("Push notification (simulated)", { title: payload.title });
-      return { success: true, simulated: true };
-    }
-
-    await sendFn(subscription, JSON.stringify(payload), { TTL: 86400 });
 
     return { success: true };
   } catch (error: unknown) {
+    const err = error as { statusCode?: number } | null;
     // Subscription expired or invalid — remove from DB
-    const statusCode = (error as { statusCode?: number } | null)?.statusCode;
-    if (statusCode === 410) {
+    if (err?.statusCode === 410 || err?.statusCode === 404) {
       logger.warn("Push subscription expired", { endpoint: subscription.endpoint });
-      try {
-        await db.pushSubscription.deleteMany({
-          where: { endpoint: subscription.endpoint },
-        });
-      } catch { /* model may not exist yet */ }
+      await removeSubscription(subscription.endpoint);
       return { success: false, expired: true };
     }
 
-    logger.error("Push notification error", { error: error instanceof Error ? error.message : String(error) });
+    logger.error("Push notification error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
     return { success: false, error };
   }
 }
 
 // ──────────────────────────────────────────
-// Send notification to user (all their devices)
+// Send push notification to a user (all their devices)
 // ──────────────────────────────────────────
 
 export async function notifyUserPush(
   userId: string,
   payload: PushPayload
-) {
-  // In production, fetch all subscriptions for this user
-  // from a PushSubscription model
-  // For now, this is a placeholder
+): Promise<{ success: boolean; delivered: number; total: number; simulated: boolean }> {
+  try {
+    const subscriptions = await db.pushSubscription.findMany({
+      where: { userId },
+      select: { endpoint: true, p256dh: true, auth: true },
+    });
 
-  logger.info("Push notification sent to user", { userId, title: payload.title });
-  return { success: true, delivered: 0 };
+    if (subscriptions.length === 0) {
+      logger.info("Push: no subscriptions for user", { userId });
+      return { success: true, delivered: 0, total: 0, simulated: false };
+    }
+
+    let delivered = 0;
+    let allSimulated = true;
+    for (const sub of subscriptions) {
+      const result = await sendPushNotification(
+        { endpoint: sub.endpoint, keys: { p256dh: sub.p256dh, auth: sub.auth } },
+        payload
+      );
+      if (result.success && !result.simulated) {
+        delivered += 1;
+        allSimulated = false;
+      } else if (result.success && result.simulated) {
+        allSimulated = allSimulated && true;
+      } else {
+        allSimulated = false;
+      }
+    }
+
+    logger.info("Push sent to user", { userId, delivered, total: subscriptions.length });
+    return { success: true, delivered, total: subscriptions.length, simulated: subscriptions.length > 0 && allSimulated };
+  } catch (error) {
+    logger.error("notifyUserPush error", {
+      error: error instanceof Error ? error.message : String(error),
+    });
+    return { success: false, delivered: 0, total: 0, simulated: false };
+  }
 }
 
 // ──────────────────────────────────────────
@@ -179,13 +196,6 @@ export async function notifyUserPush(
 
 export async function generateVapidKeys() {
   try {
-    const webpush = await getWebpush();
-    if (!webpush || !webpush.generateVAPIDKeys) {
-      return {
-        publicKey: "Not available. Install web-push: npm install web-push",
-        privateKey: "Not available",
-      };
-    }
     const vapidKeys = webpush.generateVAPIDKeys();
     return {
       publicKey: vapidKeys.publicKey,
@@ -193,7 +203,7 @@ export async function generateVapidKeys() {
     };
   } catch {
     return {
-      publicKey: "Not available. Install web-push: npm install web-push",
+      publicKey: "Not available",
       privateKey: "Not available",
     };
   }

@@ -225,6 +225,8 @@ export default function DashboardPage() {
     if (!session?.user || weeklyCheckedRef.current) return;
     weeklyCheckedRef.current = true;
     fetch("/api/notifications/weekly-summary", { method: "POST" }).catch(() => {});
+    // Monthly summary: idempotent per calendar month.
+    fetch("/api/notifications/monthly-summary", { method: "POST" }).catch(() => {});
     // Streak-at-risk notification: also once per session (endpoint guards 24h).
     fetch("/api/progress/streak-alert", { method: "POST" }).catch(() => {});
   }, [session]);

@@ -11,6 +11,7 @@ import { GamificationWidget } from "@/components/ui/gamification-display";
 import { LogoutButton } from "@/components/logout-button";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationBell } from "@/components/ui/notification-bell";
+import { usePushNotifications } from "@/lib/hooks/use-push-notifications";
 import { toast } from "sonner";
 
 const toneMeta = {
@@ -25,6 +26,7 @@ export default function SettingsPage() {
   const { settings, loading, updateSettings } = useUserSettings();
   const notifyAlert = useNotificationAlert();
   const [saving, setSaving] = useState<string | null>(null);
+  const push = usePushNotifications();
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -149,6 +151,39 @@ export default function SettingsPage() {
               loading={saving === "vibrationEnabled"}
               onChange={(v) => handleToggle("vibrationEnabled", v)}
             />
+          </SettingsCard>
+
+          {/* ── Push do navegador ── */}
+          <SettingsCard title="Notificações Push (navegador)" icon="📲">
+            <p className="mb-3 text-sm text-zinc-500 dark:text-zinc-400">
+              Receba alertas de streak em risco e resumos mesmo com a aba do Ponto do Saber fechada.
+            </p>
+            {!push.supported ? (
+              <p className="rounded-lg bg-zinc-100 px-3 py-2 text-xs text-zinc-500 dark:bg-zinc-800 dark:text-zinc-400">
+                Seu navegador não suporta notificações push. Use um navegador atualizado (Chrome, Edge, Firefox, Safari).
+              </p>
+            ) : (
+              <>
+                <ToggleRow
+                  label="Ativar notificações push"
+                  description={
+                    push.permission === "denied"
+                      ? "Permissão negada — habilite no cadeado da barra de endereço."
+                      : "Alertas aparecem mesmo sem o site aberto"
+                  }
+                  enabled={push.subscribed}
+                  loading={push.loading}
+                  onChange={async (v) => {
+                    const ok = v ? await push.enable() : await push.disable();
+                    if (ok) toast.success(v ? "Notificações push ativadas! 🔔" : "Notificações push desativadas");
+                    else if (v && push.error) toast.error(push.error);
+                  }}
+                />
+                {push.error && (
+                  <p className="mt-2 text-xs text-red-500">{push.error}</p>
+                )}
+              </>
+            )}
           </SettingsCard>
 
           {/* ── Não Perturbe ── */}
