@@ -11,7 +11,18 @@ import { useGamificationContext } from "@/lib/contexts/gamification-context";
 import { XPBar, StreakDisplay, GamificationWidget } from "@/components/ui/gamification-display";
 import { useResumeCourse } from "@/lib/hooks/use-resume-course";
 import { ResumeCourseButton } from "@/components/ui/resume-course-button";
+import dynamic from "next/dynamic";
 import { toast } from "sonner";
+
+const WeeklyXpChart = dynamic(
+  () => import("@/components/ui/weekly-xp-chart").then((m) => m.WeeklyXpChart),
+  {
+    ssr: false,
+    loading: () => (
+      <div className="h-[180px] w-full animate-pulse rounded-lg bg-zinc-100 dark:bg-zinc-800" />
+    ),
+  }
+);
 
 interface Enrollment {
   id: string;
@@ -93,21 +104,48 @@ export default function DashboardPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [certificatesCount, setCertificatesCount] = useState(0);
-  const [dailyProgress, setDailyProgress] = useState({ completedToday: 0, goal: 3 });
+  const [dailyProgress, setDailyProgress] = useState({ completedToday: 0 });
+  const [dailyGoal, setDailyGoalState] = useState(3);
+  const [weeklyXp, setWeeklyXp] = useState<{ label: string; date: string; xp: number; lessons: number }[]>([]);
+  const [weeklyXpTotal, setWeeklyXpTotal] = useState(0);
   const [loading, setLoading] = useState(true);
   // Enrollment ids with the per-module breakdown expanded
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
   const weeklyCheckedRef = useRef(false);
   const { progress: gamification, loading: gamificationLoading, refresh: refreshGamification } = useGamificationContext();
+
+  // Configurable daily goal — persisted per device (no DB migration needed).
+  useEffect(() => {
+    try {
+      const raw = localStorage.getItem("pds-daily-goal");
+      if (raw) {
+        const n = parseInt(raw, 10);
+        if (Number.isFinite(n) && n >= 1 && n <= 10) setDailyGoalState(n);
+      }
+    } catch {
+      // localStorage unavailable
+    }
+  }, []);
+
+  const setDailyGoal = (n: number) => {
+    const clamped = Math.min(10, Math.max(1, n));
+    setDailyGoalState(clamped);
+    try {
+      localStorage.setItem("pds-daily-goal", String(clamped));
+    } catch {
+      // localStorage unavailable
+    }
+  };
   const { resumeCourse, continueLoading } = useResumeCourse();
 
   // `silent` skips the welcome toast — used by the SSE real-time refreshes.
   const loadData = useCallback(async (silent = false) => {
     try {
-      const [enrollRes, certRes, dailyRes] = await Promise.all([
+      const [enrollRes, certRes, dailyRes, xpRes] = await Promise.all([
         fetch("/api/enrollments"),
         fetch("/api/certificates"),
         fetch("/api/progress/daily"),
+        fetch("/api/progress/weekly-xp"),
       ]);
       if (enrollRes.ok) {
         const enrollData = await enrollRes.json();
@@ -121,7 +159,13 @@ export default function DashboardPage() {
         setCertificatesCount(certData.length);
       }
       if (dailyRes.ok) {
-        setDailyProgress(await dailyRes.json());
+        const d = await dailyRes.json();
+        setDailyProgress({ completedToday: d.completedToday ?? 0 });
+      }
+      if (xpRes.ok) {
+        const xd = await xpRes.json();
+        setWeeklyXp(xd.days || []);
+        setWeeklyXpTotal(xd.totalXp || 0);
       }
     } catch (err) {
       console.error(err);
@@ -238,28 +282,51 @@ export default function DashboardPage() {
               ))}
             </div>
 
-            {/* Daily Goal */}
+            {/* Daily Goal — configurable (persisted per device) */}
             <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
-              <div className="flex items-center justify-between">
+              <div className="flex flex-wrap items-center justify-between gap-3">
                 <div>
                   <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Meta Diária</p>
                   <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
                     {dailyProgress.completedToday}
-                    <span className="text-base font-medium text-zinc-400"> de {dailyProgress.goal} aulas hoje</span>
+                    <span className="text-base font-medium text-zinc-400"> de {dailyGoal} aulas hoje</span>
                   </p>
                 </div>
-                <span className="text-3xl">{dailyProgress.completedToday >= dailyProgress.goal ? "🎉" : "🎯"}</span>
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">{dailyProgress.completedToday >= dailyGoal ? "🎉" : "🎯"}</span>
+                  <div className="flex items-center overflow-hidden rounded-lg border border-zinc-200 dark:border-zinc-700">
+                    <button
+                      type="button"
+                      aria-label="Diminuir meta diária"
+                      onClick={() => setDailyGoal(dailyGoal - 1)}
+                      disabled={dailyGoal <= 1}
+                      className="flex h-8 w-8 items-center justify-center text-lg font-semibold text-zinc-500 transition hover:bg-zinc-100 disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    >
+                      −
+                    </button>
+                    <span className="min-w-9 text-center text-sm font-bold text-zinc-900 dark:text-white">{dailyGoal}</span>
+                    <button
+                      type="button"
+                      aria-label="Aumentar meta diária"
+                      onClick={() => setDailyGoal(dailyGoal + 1)}
+                      disabled={dailyGoal >= 10}
+                      className="flex h-8 w-8 items-center justify-center text-lg font-semibold text-zinc-500 transition hover:bg-zinc-100 disabled:opacity-30 dark:text-zinc-400 dark:hover:bg-zinc-800"
+                    >
+                      +
+                    </button>
+                  </div>
+                </div>
               </div>
               <div className="mt-3 h-2.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-700">
                 <div
                   className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
-                  style={{ width: `${Math.min(100, (dailyProgress.completedToday / dailyProgress.goal) * 100)}%` }}
+                  style={{ width: `${Math.min(100, (dailyProgress.completedToday / dailyGoal) * 100)}%` }}
                 />
               </div>
               <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-                {dailyProgress.completedToday >= dailyProgress.goal
+                {dailyProgress.completedToday >= dailyGoal
                   ? "Meta atingida! Continue assim 🚀"
-                  : `Faltam ${dailyProgress.goal - dailyProgress.completedToday} aula(s) para bater a meta de hoje`}
+                  : `Faltam ${dailyGoal - dailyProgress.completedToday} aula(s) para bater a meta de hoje`}
               </p>
             </div>
 
@@ -273,6 +340,28 @@ export default function DashboardPage() {
                   <div className="h-full rounded-full bg-gradient-to-r from-zinc-700 to-zinc-900 transition-all duration-500 dark:from-zinc-500 dark:to-zinc-300" style={{ width: `${overallPercentage}%` }} />
                 </div>
                 <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">{totalCompletedLessons} de {totalLessons} aulas concluídas</p>
+              </div>
+            )}
+
+            {/* Weekly XP evolution */}
+            {weeklyXp.length > 0 && (
+              <div className="mb-8 rounded-xl border border-zinc-200 bg-white p-6 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+                <div className="flex flex-wrap items-center justify-between gap-2">
+                  <div>
+                    <p className="text-sm font-medium text-zinc-500 dark:text-zinc-400">Evolução de XP</p>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                      +{weeklyXpTotal} XP
+                      <span className="text-sm font-medium text-zinc-400"> nos últimos 7 dias</span>
+                    </p>
+                  </div>
+                  <span className="text-3xl">📈</span>
+                </div>
+                <div className="mt-4">
+                  <WeeklyXpChart data={weeklyXp} />
+                </div>
+                <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
+                  Conclua aulas para manter o ritmo — o gráfico atualiza em tempo real.
+                </p>
               </div>
             )}
 

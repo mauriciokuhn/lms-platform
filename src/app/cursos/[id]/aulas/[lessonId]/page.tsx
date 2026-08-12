@@ -8,6 +8,7 @@ import { showSuccess } from "@/components/ui/toast-utils";
 import { useGamificationContext } from "@/lib/contexts/gamification-context";
 import { PlayerWrapper } from "@/components/ui/player-wrapper";
 import { useCelebration, CelebrationModal } from "@/components/ui/celebration";
+import { XP_PER_LESSON } from "@/lib/xp";
 
 interface Lesson {
   id: string;
@@ -314,7 +315,7 @@ export default function LessonPage({
           next.add(currentLesson.id);
           return next;
         });
-        showSuccess("Aula concluída!", `${currentLesson?.title} — XP ganho: +50 🎉`);
+        showSuccess("Aula concluída!", `${currentLesson?.title} — XP ganho: +${XP_PER_LESSON} 🎉`);
         // Refresh gamification data and toast when the student levels up
         const fresh = await refetchProgress();
         if (fresh && prevLevelRef.current !== null && fresh.xp.level > prevLevelRef.current) {
@@ -327,8 +328,8 @@ export default function LessonPage({
         celebrate({
           type: "xp",
           title: "Aula Concluída! 🎉",
-          description: `${currentLesson?.title} — +50 XP`,
-          xpGained: 50,
+          description: `${currentLesson?.title} — +${XP_PER_LESSON} XP`,
+          xpGained: XP_PER_LESSON,
         });
         // Auto-navigate to next lesson after short delay
         if (nextLesson) {

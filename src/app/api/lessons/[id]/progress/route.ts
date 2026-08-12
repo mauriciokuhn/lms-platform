@@ -4,6 +4,7 @@ import { auth } from "@/lib/auth";
 import { blockDemoUser } from "@/lib/demo-mode";
 import { notifyUser, notifyAdmins } from "@/lib/event-bus";
 import { logger } from "@/lib/logger";
+import { XP_PER_LESSON, levelFromXp } from "@/lib/xp";
 
 export async function GET(
   _request: Request,
@@ -88,14 +89,14 @@ export async function POST(
     if (completed && !existing?.completed) {
       await db.userXP.upsert({
         where: { userId: session.user.id },
-        update: { xp: { increment: 50 } },
-        create: { userId: session.user.id, xp: 50, level: 1 },
+        update: { xp: { increment: XP_PER_LESSON } },
+        create: { userId: session.user.id, xp: XP_PER_LESSON, level: 1 },
       });
 
       // Update level based on XP
       const xpRecord = await db.userXP.findUnique({ where: { userId: session.user.id } });
       if (xpRecord) {
-        const newLevel = Math.floor(xpRecord.xp / 200) + 1;
+        const newLevel = levelFromXp(xpRecord.xp);
         if (newLevel > (xpRecord.level || 1)) {
           await db.userXP.update({
             where: { userId: session.user.id },
