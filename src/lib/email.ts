@@ -287,6 +287,31 @@ export async function sendCoursePublishedEmail(email: string, name: string, cour
 }
 
 /**
+ * Send streak-at-risk reminder email (no lesson completed today while
+ * the user has an active streak). Uses the amber brand seal.
+ */
+export async function sendStreakAtRiskEmail(email: string, name: string, streak: number) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const content = `
+    <p>Olá, <strong>${name || "aluno"}</strong>! 🔥</p>
+    <p>Seu streak de <strong>${streak} ${streak === 1 ? "dia" : "dias"}</strong> está em risco!</p>
+    <p>Você ainda não completou nenhuma aula hoje. Complete <strong>1 aula</strong> até o fim do dia para não perder sua sequência de estudos.</p>
+    <p style="text-align: center;">
+      <a href="${baseUrl}/meus-cursos" class="btn">Continuar Estudando</a>
+    </p>
+    <p style="font-size: 13px; color: #71717a;">
+      Se você já estudou hoje, ignore este email. 💪
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `🔥 Streak em risco — complete 1 aula hoje (${streak} ${streak === 1 ? "dia" : "dias"})`,
+    html: baseHtml(content),
+  });
+}
+
+/**
  * Send course rejected notification
  */
 export async function sendCourseRejectedEmail(email: string, name: string, courseTitle: string, reason: string) {

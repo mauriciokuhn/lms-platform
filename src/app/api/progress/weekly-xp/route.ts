@@ -80,6 +80,35 @@ export async function GET() {
     const totalXp = days.reduce((sum, d) => sum + d.xp, 0);
     const totalLessons = days.reduce((sum, d) => sum + d.lessons, 0);
 
+    // ── Personal 30-day average ─────────────────────────────────
+    // User's own daily average XP over the last 30 days, so the UI can
+    // show whether this week's pace is above or below their personal
+    // baseline. Scoped to the user — cheap, no cache needed.
+    const monthStart = new Date();
+    monthStart.setHours(0, 0, 0, 0);
+    monthStart.setDate(monthStart.getDate() - 29); // 30 days including today
+
+    const [monthLessons, monthAchievements] = await Promise.all([
+      db.lessonProgress.findMany({
+        where: { userId, completed: true, completedAt: { gte: monthStart } },
+        select: { completedAt: true },
+      }),
+      db.achievement.findMany({
+        where: { userId, createdAt: { gte: monthStart } },
+        select: { xpGained: true },
+      }),
+    ]);
+
+    let monthXp = 0;
+    for (const l of monthLessons) {
+      if (l.completedAt) monthXp += XP_PER_LESSON;
+    }
+    for (const a of monthAchievements) {
+      monthXp += a.xpGained;
+    }
+    const monthAverage = Math.round(monthXp / 30);
+    const weekDailyAverage = Math.round(totalXp / 7);
+
     // ── Platform comparison ─────────────────────────────────────
     // Aggregate the same 7-day window across ALL users (lessons +50 XP
     // each and achievement bonuses) to compute the user's weekly rank
@@ -135,6 +164,8 @@ export async function GET() {
       days,
       totalXp,
       totalLessons,
+      monthAverage,
+      weekDailyAverage,
       weeklyRank: comparison.weeklyRank,
       totalParticipants: comparison.totalParticipants,
       platformAverage: comparison.platformAverage,

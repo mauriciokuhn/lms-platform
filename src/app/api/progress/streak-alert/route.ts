@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
 import { notifyUser } from "@/lib/event-bus";
+import { sendStreakAtRiskEmail } from "@/lib/email";
 import { logger } from "@/lib/logger";
 
 const DAY_MS = 1000 * 60 * 60 * 24;
@@ -112,6 +113,21 @@ export async function POST() {
       message: `Complete uma aula hoje para manter seu streak de ${status.streak} ${status.streak === 1 ? "dia" : "dias"}. Não deixe a sequência quebrar!`,
       link: "/cursos",
     });
+
+    // 📧 Also send an email reminder (graceful if Resend is not configured).
+    try {
+      const user = await db.user.findUnique({
+        where: { id: session.user.id },
+        select: { email: true, name: true },
+      });
+      if (user?.email) {
+        await sendStreakAtRiskEmail(user.email, user.name || "aluno", status.streak);
+      }
+    } catch (emailError) {
+      logger.error("Failed to send streak-at-risk email", {
+        error: emailError instanceof Error ? emailError.message : String(emailError),
+      });
+    }
 
     return NextResponse.json({ notified: true, atRisk: true });
   } catch (error) {

@@ -112,6 +112,8 @@ export default function DashboardPage() {
   const [weeklyParticipants, setWeeklyParticipants] = useState(0);
   const [platformAverage, setPlatformAverage] = useState(0);
   const [topPercent, setTopPercent] = useState<number | null>(null);
+  const [monthAverage, setMonthAverage] = useState(0);
+  const [weekDailyAverage, setWeekDailyAverage] = useState(0);
   const [streakAlert, setStreakAlert] = useState<{ atRisk: boolean; streak: number }>({ atRisk: false, streak: 0 });
   const [loading, setLoading] = useState(true);
   // Enrollment ids with the per-module breakdown expanded
@@ -176,6 +178,8 @@ export default function DashboardPage() {
         setWeeklyParticipants(xd.totalParticipants || 0);
         setPlatformAverage(xd.platformAverage || 0);
         setTopPercent(xd.topPercent ?? null);
+        setMonthAverage(xd.monthAverage || 0);
+        setWeekDailyAverage(xd.weekDailyAverage || 0);
       }
       if (streakRes.ok) {
         const sd = await streakRes.json();
@@ -446,6 +450,38 @@ export default function DashboardPage() {
                         </div>
                       </div>
                     </div>
+                  </div>
+                )}
+                {/* Personal pace: this week vs. your 30-day average */}
+                {monthAverage > 0 && (
+                  <div className="mt-4 flex flex-wrap items-center justify-between gap-3 rounded-lg border border-amber-100 bg-gradient-to-r from-amber-50/80 to-orange-50/60 px-4 py-3 dark:border-amber-900/50 dark:from-amber-950/30 dark:to-orange-950/20">
+                    <div className="flex items-center gap-3">
+                      <span className="text-2xl">
+                        {weekDailyAverage > monthAverage ? "📈" : weekDailyAverage < monthAverage ? "📉" : "🎯"}
+                      </span>
+                      <div>
+                        <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Seu ritmo pessoal</p>
+                        <p className="text-sm font-semibold text-zinc-900 dark:text-white">
+                          {weekDailyAverage} XP/dia esta semana
+                          <span className="font-normal text-zinc-400"> vs. média de {monthAverage} XP/dia (30 dias)</span>
+                        </p>
+                      </div>
+                    </div>
+                    <span
+                      className={`rounded-full px-2.5 py-1 text-[11px] font-semibold ${
+                        weekDailyAverage > monthAverage
+                          ? "bg-amber-500/15 text-amber-700 dark:text-amber-300"
+                          : weekDailyAverage < monthAverage
+                            ? "bg-zinc-200 text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400"
+                            : "bg-green-500/15 text-green-700 dark:text-green-300"
+                      }`}
+                    >
+                      {weekDailyAverage > monthAverage
+                        ? "Acima da sua média 🚀"
+                        : weekDailyAverage < monthAverage
+                          ? "Abaixo da sua média"
+                          : "No seu ritmo 🎯"}
+                    </span>
                   </div>
                 )}
                 <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
