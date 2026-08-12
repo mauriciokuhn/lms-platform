@@ -335,6 +335,17 @@ export default function LessonPage({
                   }
                 }}
               />
+              {currentLesson.contentBody && (
+                <div className="mx-auto mt-10 max-w-3xl">
+                  <div className="prose prose-invert max-w-none space-y-4">
+                    {currentLesson.contentBody.split(/\n{2,}/).map((paragraph, i) => (
+                      <p key={i} className="text-zinc-300 leading-relaxed">
+                        {paragraph}
+                      </p>
+                    ))}
+                  </div>
+                </div>
+              )}
             </div>
           ) : currentLesson.contentType === "PDF" ? (
             <div className="mx-auto max-w-3xl px-4 py-12 text-center">
