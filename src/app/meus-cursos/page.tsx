@@ -5,6 +5,8 @@ import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { GamificationWidget } from "@/components/ui/gamification-display";
+import { useResumeCourse } from "@/lib/hooks/use-resume-course";
+import { ResumeCourseButton } from "@/components/ui/resume-course-button";
 
 interface Enrollment {
   id: string;
@@ -29,6 +31,7 @@ export default function MyCoursesPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const { resumeCourse, continueLoading } = useResumeCourse();
 
   useEffect(() => {
     if (status === "unauthenticated") {
@@ -162,6 +165,14 @@ export default function MyCoursesPage() {
                   <p className="mt-2 text-[10px] text-zinc-400 dark:text-zinc-500">
                     Concluído em {new Date(enrollment.completedAt).toLocaleDateString("pt-BR")}
                   </p>
+                )}
+
+                {enrollment.status !== "COMPLETED" && (
+                  <ResumeCourseButton
+                    courseId={enrollment.course.id}
+                    loading={continueLoading === enrollment.course.id}
+                    onResume={resumeCourse}
+                  />
                 )}
               </Link>
             ))}

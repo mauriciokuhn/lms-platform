@@ -4,7 +4,8 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
-import { showInfo } from "@/components/ui/toast-utils";
+import { useResumeCourse } from "@/lib/hooks/use-resume-course";
+import { ResumeCourseButton } from "@/components/ui/resume-course-button";
 import { StarRating } from "@/components/ui/star-rating";
 import { TopRatedBadge } from "@/components/ui/top-rated-badge";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -30,12 +31,6 @@ interface Course {
   studentsCount: number;
   averageRating: number | null;
   totalReviews: number;
-}
-
-interface LessonLite {
-  id: string;
-  title: string;
-  progress?: { userId: string; completed: boolean }[];
 }
 
 type SortBy = "recent" | "rating" | "reviews" | "students";
@@ -81,8 +76,7 @@ function CoursesContent() {
   const [loading, setLoading] = useState(true);
   // courseId -> enrollment progress (only for logged-in students)
   const [enrollments, setEnrollments] = useState<Record<string, { percentage: number; completed: number; total: number }>>({});
-  const [continueLoading, setContinueLoading] = useState<string | null>(null);
-  const continueBusyRef = useRef(false);
+  const { resumeCourse, continueLoading } = useResumeCourse();
   const [search, setSearch] = useState(searchParams.get("q") || "");
   const [categoryFilter, setCategoryFilter] = useState(searchParams.get("cat") || "");
   const [sortBy, setSortBy] = useState<SortBy>(
@@ -165,67 +159,6 @@ function CoursesContent() {
     setViewMode(value);
     syncUrl(searchRef.current, catRef.current, sortRef.current, ratingRef.current, priceRef.current, value);
   }, [syncUrl]);
-
-  // "Continuar curso": resume the last visited lesson (if still incomplete)
-  // or jump to the next uncompleted lesson.
-  const handleContinueCourse = useCallback(async (courseId: string) => {
-    if (continueBusyRef.current) return;
-    continueBusyRef.current = true;
-    setContinueLoading(courseId);
-    try {
-      const res = await fetch(`/api/courses/${courseId}`);
-      if (!res.ok) return;
-      const data = await res.json();
-      const modules = (data?.modules || []) as { lessons?: LessonLite[] }[];
-      const lessons: LessonLite[] = modules.flatMap((m) => m.lessons || []);
-      if (lessons.length === 0) {
-        router.push(`/cursos/${courseId}`);
-        return;
-      }
-
-      const userId = session?.user?.id;
-      const isComplete = (l: LessonLite) =>
-        !!userId &&
-        Array.isArray(l.progress) &&
-        l.progress.some((p) => p.userId === userId && p.completed);
-
-      // 1) Resume the last visited lesson when it is still incomplete.
-      let target: LessonLite | null = null;
-      let resumed = false;
-      try {
-        const lastId = window.localStorage.getItem(`pds-last-lesson-${courseId}`);
-        if (lastId) {
-          const last = lessons.find((l) => l.id === lastId);
-          if (last && !isComplete(last)) {
-            target = last;
-            resumed = true;
-          }
-        }
-      } catch {
-        // ignore
-      }
-
-      // 2) Otherwise: first uncompleted lesson.
-      if (!target) {
-        target = lessons.find((l) => !isComplete(l)) || null;
-      }
-
-      if (target) {
-        if (resumed) {
-          showInfo("Retomando de onde você parou", target.title);
-        }
-        router.push(`/cursos/${courseId}/aulas/${target.id}`);
-      } else {
-        // Every lesson is done — open the course page.
-        router.push(`/cursos/${courseId}`);
-      }
-    } catch (err) {
-      console.error("Error continuing course:", err);
-    } finally {
-      continueBusyRef.current = false;
-      setContinueLoading(null);
-    }
-  }, [router, session]);
 
   const clearAllFilters = useCallback(() => {
     setSearch("");
@@ -644,35 +577,12 @@ function CoursesContent() {
                         <span className="text-xs text-zinc-500 dark:text-zinc-400">
                           {enrollInfo.completed}/{enrollInfo.total} aulas · {enrollInfo.percentage}%
                         </span>
-                        <span
-                          role="button"
-                          tabIndex={0}
-                          onClick={(e) => {
-                            e.preventDefault();
-                            e.stopPropagation();
-                            handleContinueCourse(course.id);
-                          }}
-                          onKeyDown={(e) => {
-                            if (e.key === "Enter" || e.key === " ") {
-                              e.preventDefault();
-                              e.stopPropagation();
-                              handleContinueCourse(course.id);
-                            }
-                          }}
-                          aria-disabled={continueLoading === course.id}
-                          className={`ml-auto inline-flex shrink-0 cursor-pointer items-center gap-1.5 rounded-lg bg-green-600 px-3 py-1.5 text-xs font-semibold text-white transition hover:bg-green-700 ${continueLoading === course.id ? "pointer-events-none opacity-60" : ""}`}
-                        >
-                          {continueLoading === course.id ? (
-                            <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                          ) : (
-                            <>
-                              <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                                <path d="M8 5v14l11-7z" />
-                              </svg>
-                              Continuar curso
-                            </>
-                          )}
-                        </span>
+                        <ResumeCourseButton
+                          courseId={course.id}
+                          loading={continueLoading === course.id}
+                          onResume={resumeCourse}
+                          variant="inline"
+                        />
                       </div>
                     )}
                   </div>
@@ -758,35 +668,12 @@ function CoursesContent() {
                     >
                       <div className="h-full rounded-full bg-green-500" style={{ width: `${enrollInfo.percentage}%` }} />
                     </div>
-                    <span
-                      role="button"
-                      tabIndex={0}
-                      onClick={(e) => {
-                        e.preventDefault();
-                        e.stopPropagation();
-                        handleContinueCourse(course.id);
-                      }}
-                      onKeyDown={(e) => {
-                        if (e.key === "Enter" || e.key === " ") {
-                          e.preventDefault();
-                          e.stopPropagation();
-                          handleContinueCourse(course.id);
-                        }
-                      }}
-                      aria-disabled={continueLoading === course.id}
-                      className={`mt-3 flex w-full cursor-pointer items-center justify-center gap-2 rounded-lg bg-green-600 px-3 py-2 text-xs font-semibold text-white transition hover:bg-green-700 ${continueLoading === course.id ? "pointer-events-none opacity-60" : ""}`}
-                    >
-                      {continueLoading === course.id ? (
-                        <span className="h-3.5 w-3.5 animate-spin rounded-full border-2 border-white/40 border-t-white" />
-                      ) : (
-                        <>
-                          <svg className="h-3.5 w-3.5" fill="currentColor" viewBox="0 0 24 24" aria-hidden="true">
-                            <path d="M8 5v14l11-7z" />
-                          </svg>
-                          Continuar curso
-                        </>
-                      )}
-                    </span>
+                    <ResumeCourseButton
+                      courseId={course.id}
+                      loading={continueLoading === course.id}
+                      onResume={resumeCourse}
+                      variant="full"
+                    />
                   </div>
                 )}
                 {course.averageRating && (

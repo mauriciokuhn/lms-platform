@@ -9,6 +9,8 @@ import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { NotificationBell } from "@/components/ui/notification-bell";
 import { useGamificationContext } from "@/lib/contexts/gamification-context";
 import { XPBar, StreakDisplay, GamificationWidget } from "@/components/ui/gamification-display";
+import { useResumeCourse } from "@/lib/hooks/use-resume-course";
+import { ResumeCourseButton } from "@/components/ui/resume-course-button";
 import { toast } from "sonner";
 
 interface Enrollment {
@@ -92,6 +94,7 @@ export default function DashboardPage() {
   const [certificatesCount, setCertificatesCount] = useState(0);
   const [loading, setLoading] = useState(true);
   const { progress: gamification, loading: gamificationLoading } = useGamificationContext();
+  const { resumeCourse, continueLoading } = useResumeCourse();
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
@@ -224,6 +227,11 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{enrollment.progress.completed}/{enrollment.progress.total} aulas</p>
+                      <ResumeCourseButton
+                        courseId={enrollment.course.id}
+                        loading={continueLoading === enrollment.course.id}
+                        onResume={resumeCourse}
+                      />
                     </Link>
                   ))}
                 </div>
