@@ -1,6 +1,6 @@
 "use client";
 
-import { useCallback, useEffect, useState } from "react";
+import { useCallback, useEffect, useRef, useState } from "react";
 import { useSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
@@ -25,6 +25,7 @@ interface Enrollment {
     thumbnailUrl: string | null;
   };
   progress: { total: number; completed: number; percentage: number };
+  modules: { id: string; title: string; completed: number; total: number; percentage: number }[];
 }
 
 function RecommendationsSection() {
@@ -94,6 +95,9 @@ export default function DashboardPage() {
   const [certificatesCount, setCertificatesCount] = useState(0);
   const [dailyProgress, setDailyProgress] = useState({ completedToday: 0, goal: 3 });
   const [loading, setLoading] = useState(true);
+  // Enrollment ids with the per-module breakdown expanded
+  const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
+  const weeklyCheckedRef = useRef(false);
   const { progress: gamification, loading: gamificationLoading, refresh: refreshGamification } = useGamificationContext();
   const { resumeCourse, continueLoading } = useResumeCourse();
 
@@ -152,6 +156,23 @@ export default function DashboardPage() {
     es.onerror = () => {};
     return () => es.close();
   }, [session, loadData, refreshGamification]);
+
+  // Weekly study summary: fire once per session — the endpoint is idempotent
+  // (creates at most one notification per 7-day window per user).
+  useEffect(() => {
+    if (!session?.user || weeklyCheckedRef.current) return;
+    weeklyCheckedRef.current = true;
+    fetch("/api/notifications/weekly-summary", { method: "POST" }).catch(() => {});
+  }, [session]);
+
+  const toggleModules = (enrollmentId: string) => {
+    setExpandedModules((prev) => {
+      const next = new Set(prev);
+      if (next.has(enrollmentId)) next.delete(enrollmentId);
+      else next.add(enrollmentId);
+      return next;
+    });
+  };
 
   if (!session?.user) return null;
 
@@ -282,6 +303,63 @@ export default function DashboardPage() {
                         </div>
                       </div>
                       <p className="mt-1 text-xs text-zinc-400 dark:text-zinc-500">{enrollment.progress.completed}/{enrollment.progress.total} aulas</p>
+                      {enrollment.modules && enrollment.modules.length > 0 && (
+                        <>
+                          <span
+                            role="button"
+                            tabIndex={0}
+                            onClick={(e) => {
+                              e.preventDefault();
+                              e.stopPropagation();
+                              toggleModules(enrollment.id);
+                            }}
+                            onKeyDown={(e) => {
+                              if (e.key === "Enter" || e.key === " ") {
+                                e.preventDefault();
+                                e.stopPropagation();
+                                toggleModules(enrollment.id);
+                              }
+                            }}
+                            aria-expanded={expandedModules.has(enrollment.id)}
+                            className="mt-3 flex w-full cursor-pointer items-center justify-between rounded-lg bg-zinc-50 px-3 py-2 text-[11px] font-medium text-zinc-600 transition hover:bg-zinc-100 dark:bg-zinc-800 dark:text-zinc-400 dark:hover:bg-zinc-700"
+                          >
+                            <span>📚 Progresso por módulo</span>
+                            <svg
+                              className={`h-3.5 w-3.5 transition-transform duration-200 ${expandedModules.has(enrollment.id) ? "rotate-180" : ""}`}
+                              fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true"
+                            >
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                            </svg>
+                          </span>
+                          {expandedModules.has(enrollment.id) && (
+                            <div className="mt-3 space-y-2.5">
+                              {enrollment.modules.map((mod) => (
+                                <div key={mod.id}>
+                                  <div className="mb-1 flex items-center justify-between gap-2 text-[10px] text-zinc-500 dark:text-zinc-400">
+                                    <span className="truncate">{mod.title}</span>
+                                    <span className="shrink-0">
+                                      {mod.completed}/{mod.total} · {mod.percentage}%
+                                    </span>
+                                  </div>
+                                  <div
+                                    className="h-1.5 w-full overflow-hidden rounded-full bg-zinc-100 dark:bg-zinc-800"
+                                    role="progressbar"
+                                    aria-valuenow={mod.percentage}
+                                    aria-valuemin={0}
+                                    aria-valuemax={100}
+                                    aria-valuetext={`${mod.percentage}%`}
+                                  >
+                                    <div
+                                      className={`h-full rounded-full transition-all duration-500 ${mod.percentage === 100 ? "bg-green-500" : "bg-amber-500"}`}
+                                      style={{ width: `${mod.percentage}%` }}
+                                    />
+                                  </div>
+                                </div>
+                              ))}
+                            </div>
+                          )}
+                        </>
+                      )}
                       <ResumeCourseButton
                         courseId={enrollment.course.id}
                         loading={continueLoading === enrollment.course.id}

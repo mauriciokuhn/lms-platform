@@ -376,6 +376,19 @@ export default function LessonPage({
     const totalLessons = allLessons.length;
     const completedCount = completedLessonIds.size;
     const percentage = totalLessons > 0 ? Math.round((completedCount / totalLessons) * 100) : 0;
+    // Estimated seconds per lesson: explicit duration when set, otherwise a
+    // reading-time estimate from the text body (~20 chars/second, min 1 min).
+    const lessonSeconds = (l: Lesson) => {
+      if (l.duration && l.duration > 0) return l.duration;
+      if (l.contentType === "TEXT" && l.contentBody) {
+        return Math.max(60, Math.round(l.contentBody.length / 20));
+      }
+      return 0;
+    };
+    const totalSeconds = allLessons.reduce((acc, l) => acc + lessonSeconds(l), 0);
+    const remainingSeconds = allLessons
+      .filter((l) => !completedLessonIds.has(l.id))
+      .reduce((acc, l) => acc + lessonSeconds(l), 0);
     return (
       <div className="mt-6 overflow-hidden rounded-xl border border-zinc-800 bg-zinc-900">
         <div className="flex items-center justify-between border-b border-zinc-800 px-5 py-3">
@@ -394,6 +407,18 @@ export default function LessonPage({
             />
           </div>
         </div>
+        {totalSeconds > 0 && (
+          <div className="flex items-center gap-1.5 px-5 pb-2.5 text-[11px] text-zinc-500">
+            <svg className="h-3.5 w-3.5 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" />
+            </svg>
+            <span className="truncate">
+              Tempo restante estimado:{" "}
+              <span className="font-medium text-zinc-300">{formatTime(remainingSeconds)}</span>
+            </span>
+            <span className="ml-auto shrink-0 text-zinc-600">Total: {formatTime(totalSeconds)}</span>
+          </div>
+        )}
         {nextLesson ? (
           <div className="flex items-center justify-between gap-4 border-t border-zinc-800 px-5 py-4">
             <div className="min-w-0">
