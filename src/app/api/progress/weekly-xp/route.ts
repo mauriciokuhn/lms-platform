@@ -1,6 +1,7 @@
 import { NextResponse } from "next/server";
 import { db } from "@/lib/db";
 import { auth } from "@/lib/auth";
+import { cache } from "@/lib/cache";
 import { logger } from "@/lib/logger";
 import { XP_PER_LESSON } from "@/lib/xp";
 
@@ -79,7 +80,66 @@ export async function GET() {
     const totalXp = days.reduce((sum, d) => sum + d.xp, 0);
     const totalLessons = days.reduce((sum, d) => sum + d.lessons, 0);
 
-    return NextResponse.json({ days, totalXp, totalLessons });
+    // ── Platform comparison ─────────────────────────────────────
+    // Aggregate the same 7-day window across ALL users (lessons +50 XP
+    // each and achievement bonuses) to compute the user's weekly rank
+    // and the platform average. Cached 60s (same convention as the
+    // weekly-ranking route) since it scans all users' activity.
+    const comparison = await cache.getOrSet(
+      `progress:weekly-xp:cmp:${start.toISOString().slice(0, 10)}`,
+      async () => {
+        const [allLessons, allAchievements] = await Promise.all([
+          db.lessonProgress.findMany({
+            where: { completed: true, completedAt: { gte: start } },
+            select: { userId: true, completedAt: true },
+          }),
+          db.achievement.findMany({
+            where: { createdAt: { gte: start } },
+            select: { userId: true, createdAt: true, xpGained: true },
+          }),
+        ]);
+
+        const userWeeklyXp = new Map<string, number>();
+        const addXp = (uid: string, xp: number) =>
+          userWeeklyXp.set(uid, (userWeeklyXp.get(uid) || 0) + xp);
+
+        for (const l of allLessons) {
+          if (!l.completedAt) continue;
+          const idx = bucketIndex(dayStart(l.completedAt));
+          if (idx >= 0 && idx < DAYS) addXp(l.userId, XP_PER_LESSON);
+        }
+        for (const a of allAchievements) {
+          const idx = bucketIndex(dayStart(a.createdAt));
+          if (idx >= 0 && idx < DAYS) addXp(a.userId, a.xpGained);
+        }
+
+        const ranks = Array.from(userWeeklyXp.entries()).sort((a, b) => b[1] - a[1]);
+        const myRankIndex = ranks.findIndex(([uid]) => uid === userId);
+        const weeklyRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
+        const totalParticipants = ranks.length;
+        const platformAverage =
+          totalParticipants > 0
+            ? Math.round(ranks.reduce((sum, [, xp]) => sum + xp, 0) / totalParticipants)
+            : 0;
+        const topPercent =
+          weeklyRank !== null && totalParticipants > 0
+            ? Math.round((weeklyRank / totalParticipants) * 100)
+            : null;
+
+        return { weeklyRank, totalParticipants, platformAverage, topPercent };
+      },
+      60
+    );
+
+    return NextResponse.json({
+      days,
+      totalXp,
+      totalLessons,
+      weeklyRank: comparison.weeklyRank,
+      totalParticipants: comparison.totalParticipants,
+      platformAverage: comparison.platformAverage,
+      topPercent: comparison.topPercent,
+    });
   } catch (error) {
     logger.error("GET /api/progress/weekly-xp error", {
       error: error instanceof Error ? error.message : String(error),

@@ -108,6 +108,11 @@ export default function DashboardPage() {
   const [dailyGoal, setDailyGoalState] = useState(3);
   const [weeklyXp, setWeeklyXp] = useState<{ label: string; date: string; xp: number; lessons: number }[]>([]);
   const [weeklyXpTotal, setWeeklyXpTotal] = useState(0);
+  const [weeklyRank, setWeeklyRank] = useState<number | null>(null);
+  const [weeklyParticipants, setWeeklyParticipants] = useState(0);
+  const [platformAverage, setPlatformAverage] = useState(0);
+  const [topPercent, setTopPercent] = useState<number | null>(null);
+  const [streakAlert, setStreakAlert] = useState<{ atRisk: boolean; streak: number }>({ atRisk: false, streak: 0 });
   const [loading, setLoading] = useState(true);
   // Enrollment ids with the per-module breakdown expanded
   const [expandedModules, setExpandedModules] = useState<Set<string>>(new Set());
@@ -141,11 +146,12 @@ export default function DashboardPage() {
   // `silent` skips the welcome toast — used by the SSE real-time refreshes.
   const loadData = useCallback(async (silent = false) => {
     try {
-      const [enrollRes, certRes, dailyRes, xpRes] = await Promise.all([
+      const [enrollRes, certRes, dailyRes, xpRes, streakRes] = await Promise.all([
         fetch("/api/enrollments"),
         fetch("/api/certificates"),
         fetch("/api/progress/daily"),
         fetch("/api/progress/weekly-xp"),
+        fetch("/api/progress/streak-alert"),
       ]);
       if (enrollRes.ok) {
         const enrollData = await enrollRes.json();
@@ -166,6 +172,14 @@ export default function DashboardPage() {
         const xd = await xpRes.json();
         setWeeklyXp(xd.days || []);
         setWeeklyXpTotal(xd.totalXp || 0);
+        setWeeklyRank(xd.weeklyRank ?? null);
+        setWeeklyParticipants(xd.totalParticipants || 0);
+        setPlatformAverage(xd.platformAverage || 0);
+        setTopPercent(xd.topPercent ?? null);
+      }
+      if (streakRes.ok) {
+        const sd = await streakRes.json();
+        setStreakAlert({ atRisk: !!sd.atRisk, streak: sd.streak || 0 });
       }
     } catch (err) {
       console.error(err);
@@ -207,6 +221,8 @@ export default function DashboardPage() {
     if (!session?.user || weeklyCheckedRef.current) return;
     weeklyCheckedRef.current = true;
     fetch("/api/notifications/weekly-summary", { method: "POST" }).catch(() => {});
+    // Streak-at-risk notification: also once per session (endpoint guards 24h).
+    fetch("/api/progress/streak-alert", { method: "POST" }).catch(() => {});
   }, [session]);
 
   const toggleModules = (enrollmentId: string) => {
@@ -263,10 +279,34 @@ export default function DashboardPage() {
           </div>
         ) : (
           <>
+
             <div className="mb-8">
               <h2 className="text-2xl font-bold text-zinc-900 dark:text-white">Olá, {session.user.name || "Aluno"}!</h2>
               <p className="mt-1 text-zinc-500 dark:text-zinc-400">Continue seus estudos de onde parou.</p>
             </div>
+
+            {/* Streak at risk — no lesson completed today with an active streak */}
+            {streakAlert.atRisk && (
+              <div className="mb-8 flex flex-wrap items-center justify-between gap-3 rounded-xl border border-amber-200 bg-gradient-to-r from-amber-50 to-orange-50 p-5 shadow-sm dark:border-amber-800 dark:from-amber-950/40 dark:to-orange-950/30">
+                <div className="flex items-center gap-3">
+                  <span className="text-3xl">🔥</span>
+                  <div>
+                    <p className="font-semibold text-amber-900 dark:text-amber-200">
+                      Streak de {streakAlert.streak} {streakAlert.streak === 1 ? "dia" : "dias"} em risco!
+                    </p>
+                    <p className="text-sm text-amber-700 dark:text-amber-300/80">
+                      Você ainda não completou nenhuma aula hoje. Complete 1 aula para não perder sua sequência.
+                    </p>
+                  </div>
+                </div>
+                <Link
+                  href="/meus-cursos"
+                  className="rounded-lg bg-amber-500 px-4 py-2 text-sm font-semibold text-white shadow-sm transition hover:bg-amber-600"
+                >
+                  Continuar estudando
+                </Link>
+              </div>
+            )}
 
             <div className="mb-8 grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
               {[
@@ -359,6 +399,55 @@ export default function DashboardPage() {
                 <div className="mt-4">
                   <WeeklyXpChart data={weeklyXp} />
                 </div>
+                {/* Weekly comparison: rank + platform average */}
+                {(weeklyRank !== null || platformAverage > 0) && (
+                  <div className="mt-4 grid gap-3 sm:grid-cols-2">
+                    <div className="rounded-lg border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60">
+                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sua posição na semana</p>
+                      <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">
+                        {weeklyRank !== null ? `#${weeklyRank}` : "—"}
+                        <span className="text-sm font-medium text-zinc-400">
+                          {" "}de {weeklyParticipants} aluno{weeklyParticipants === 1 ? "" : "s"} ativo{weeklyParticipants === 1 ? "" : "s"}
+                        </span>
+                      </p>
+                      {topPercent !== null && weeklyParticipants > 1 && (
+                        <p className="mt-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          🏅 Entre os {topPercent}% mais ativos
+                        </p>
+                      )}
+                      {weeklyParticipants <= 1 && weeklyRank !== null && (
+                        <p className="mt-1 text-xs font-semibold text-amber-600 dark:text-amber-400">
+                          🌟 Único aluno ativo nesta semana
+                        </p>
+                      )}
+                    </div>
+                    <div className="rounded-lg border border-zinc-100 bg-zinc-50 p-4 dark:border-zinc-800 dark:bg-zinc-800/60">
+                      <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sua semana vs. média da plataforma</p>
+                      <div className="mt-2 space-y-2">
+                        <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
+                          <span>Você</span>
+                          <span className="font-semibold">+{weeklyXpTotal} XP</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                          <div
+                            className="h-full rounded-full bg-gradient-to-r from-amber-400 to-amber-600 transition-all duration-500"
+                            style={{ width: `${Math.round((weeklyXpTotal / Math.max(1, weeklyXpTotal, platformAverage)) * 100)}%` }}
+                          />
+                        </div>
+                        <div className="flex items-center justify-between text-xs text-zinc-600 dark:text-zinc-300">
+                          <span>Média</span>
+                          <span className="font-semibold">+{platformAverage} XP</span>
+                        </div>
+                        <div className="h-2 w-full overflow-hidden rounded-full bg-zinc-200 dark:bg-zinc-700">
+                          <div
+                            className="h-full rounded-full bg-zinc-400/70 transition-all duration-500 dark:bg-zinc-500"
+                            style={{ width: `${Math.round((platformAverage / Math.max(1, weeklyXpTotal, platformAverage)) * 100)}%` }}
+                          />
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                )}
                 <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
                   Conclua aulas para manter o ritmo — o gráfico atualiza em tempo real.
                 </p>
