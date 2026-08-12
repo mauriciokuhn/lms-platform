@@ -18,6 +18,7 @@ interface Lesson {
   duration: number | null;
   orderIndex: number;
   moduleId: string;
+  progress?: { userId: string; completed: boolean }[];
 }
 
 interface Module {
@@ -79,6 +80,8 @@ export default function LessonPage({
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   // Modules collapsed in the sidebar (retrair/expandir). Null until course loads.
   const [collapsedModules, setCollapsedModules] = useState<Set<string> | null>(null);
+  // IDs of lessons already completed by the current user (sidebar checkmarks).
+  const [completedLessonIds, setCompletedLessonIds] = useState<Set<string>>(new Set());
 
   // Find current lesson and adjacent lessons
   const allLessons = course?.modules.flatMap((m) => m.lessons) || [];
@@ -103,6 +106,25 @@ export default function LessonPage({
 
       setCourse(courseData);
 
+      // Build the set of completed lesson IDs for the current user
+      const userId = session?.user?.id;
+      if (userId) {
+        const completed = new Set<string>();
+        for (const mod of courseData.modules) {
+          for (const lesson of mod.lessons) {
+            if (
+              Array.isArray(lesson.progress) &&
+              lesson.progress.some((p: { userId: string; completed: boolean }) => p.userId === userId && p.completed)
+            ) {
+              completed.add(lesson.id);
+            }
+          }
+        }
+        setCompletedLessonIds(completed);
+      } else {
+        setCompletedLessonIds(new Set());
+      }
+
       // Find current lesson across all modules
       let found: Lesson | null = null;
       for (const mod of courseData.modules) {
@@ -119,7 +141,7 @@ export default function LessonPage({
     } finally {
       setLoading(false);
     }
-  }, [courseId, lessonId, router]);
+  }, [courseId, lessonId, router, session]);
 
   useEffect(() => {
     (async () => {
@@ -127,10 +149,23 @@ export default function LessonPage({
     })();
   }, [loadData]);
 
-  // Initialize collapsed state once course loads: collapse every module
-  // except the one containing the current lesson (declutters long courses).
+  // Initialize collapsed state: restore from localStorage when present,
+  // otherwise collapse every module except the current lesson's module.
   useEffect(() => {
     if (collapsedModules !== null || !course) return;
+    const storageKey = `pds-collapsed-modules-${course.id}`;
+    try {
+      const raw = window.localStorage.getItem(storageKey);
+      if (raw) {
+        const parsed = JSON.parse(raw);
+        if (Array.isArray(parsed)) {
+          setCollapsedModules(new Set(parsed));
+          return;
+        }
+      }
+    } catch {
+      // corrupted/blocked storage — fall through to defaults
+    }
     const currentModuleId = course.modules.find((m) =>
       m.lessons.some((l) => l.id === lessonId)
     )?.id;
@@ -140,6 +175,19 @@ export default function LessonPage({
     }
     setCollapsedModules(collapsed);
   }, [collapsedModules, course, lessonId]);
+
+  // Persist the collapsed state after every change (incl. first init).
+  useEffect(() => {
+    if (collapsedModules === null || !course) return;
+    try {
+      window.localStorage.setItem(
+        `pds-collapsed-modules-${course.id}`,
+        JSON.stringify([...collapsedModules])
+      );
+    } catch {
+      // storage unavailable (e.g. private mode) — ignore
+    }
+  }, [collapsedModules, course]);
 
   const toggleModule = (moduleId: string) => {
     setCollapsedModules((prev) => {
@@ -180,6 +228,7 @@ export default function LessonPage({
       router.push("/login");
       return;
     }
+    if (!currentLesson) return;
 
     // Prevent re-entry if already saving or completed
     if (saving || progress.completed) return;
@@ -194,6 +243,11 @@ export default function LessonPage({
 
       if (res.ok) {
         setProgress((prev) => ({ ...prev, completed: true }));
+        setCompletedLessonIds((prev) => {
+          const next = new Set(prev);
+          next.add(currentLesson.id);
+          return next;
+        });
         showSuccess("Aula concluída!", `${currentLesson?.title} — XP ganho: +50 🎉`);
         // Show celebration modal
         celebrate({
@@ -320,6 +374,7 @@ export default function LessonPage({
         <nav className="p-4">
           {course.modules.map((mod) => {
             const collapsed = collapsedModules?.has(mod.id) ?? false;
+            const modCompleted = mod.lessons.filter((l) => completedLessonIds.has(l.id)).length;
             return (
             <div key={mod.id} className="mb-4">
               <h3 className="mb-2">
@@ -333,7 +388,11 @@ export default function LessonPage({
                 <span className="truncate">
                   {mod.title}
                   <span className="ml-1.5 font-normal normal-case tracking-normal text-zinc-600">
-                    {mod.lessons.length} {mod.lessons.length === 1 ? "aula" : "aulas"}
+                    {modCompleted > 0 ? (
+                      <span className="text-green-400">✓ {modCompleted}/{mod.lessons.length}</span>
+                    ) : (
+                      <>{mod.lessons.length} {mod.lessons.length === 1 ? "aula" : "aulas"}</>
+                    )}
                   </span>
                 </span>
                 <svg
@@ -351,6 +410,7 @@ export default function LessonPage({
               <ul className="space-y-1">
                 {mod.lessons.map((lesson) => {
                   const isActive = lesson.id === lessonId;
+                  const isCompleted = completedLessonIds.has(lesson.id);
                   return (
                     <li key={lesson.id}>
                       <Link
@@ -362,10 +422,16 @@ export default function LessonPage({
                             : "text-zinc-400 hover:bg-zinc-800 hover:text-white"
                         }`}
                       >
-                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] ${
-                          false ? "bg-green-500 text-white" : "border border-zinc-600 text-zinc-500"
+                        <span className={`flex h-5 w-5 shrink-0 items-center justify-center rounded-full text-[10px] transition ${
+                          isCompleted ? "bg-green-500 text-white" : "border border-zinc-600 text-zinc-500"
                         }`}>
-                          {lesson.orderIndex}
+                          {isCompleted ? (
+                            <svg className="h-3 w-3" fill="none" stroke="currentColor" viewBox="0 0 24 24" aria-hidden="true">
+                              <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2.5} d="M5 13l4 4L19 7" />
+                            </svg>
+                          ) : (
+                            lesson.orderIndex
+                          )}
                         </span>
                         <span className="flex-1 truncate">{lesson.title}</span>
                         {lesson.duration && (
