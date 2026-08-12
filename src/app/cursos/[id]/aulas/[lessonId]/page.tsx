@@ -34,6 +34,34 @@ interface CourseData {
   modules: Module[];
 }
 
+/**
+ * Renderiza o corpo da aula com suporte a subtítulos.
+ * Blocos iniciados com "## " viram subtítulos em destaque;
+ * os demais blocos viram parágrafos.
+ */
+function LessonBody({ body }: { body: string | null }) {
+  if (!body) return null;
+  const blocks = body
+    .split(/\n{2,}/)
+    .map((b) => b.trim())
+    .filter(Boolean);
+  return (
+    <div className="space-y-4">
+      {blocks.map((block, i) =>
+        block.startsWith("## ") ? (
+          <h3 key={i} className="pt-4 text-lg font-semibold text-amber-300">
+            {block.slice(3)}
+          </h3>
+        ) : (
+          <p key={i} className="text-zinc-300 leading-relaxed">
+            {block}
+          </p>
+        )
+      )}
+    </div>
+  );
+}
+
 export default function LessonPage({
   params,
 }: {
@@ -337,13 +365,7 @@ export default function LessonPage({
               />
               {currentLesson.contentBody && (
                 <div className="mx-auto mt-10 max-w-3xl">
-                  <div className="prose prose-invert max-w-none space-y-4">
-                    {currentLesson.contentBody.split(/\n{2,}/).map((paragraph, i) => (
-                      <p key={i} className="text-zinc-300 leading-relaxed">
-                        {paragraph}
-                      </p>
-                    ))}
-                  </div>
+                  <LessonBody body={currentLesson.contentBody} />
                 </div>
               )}
             </div>
@@ -385,11 +407,7 @@ export default function LessonPage({
           ) : currentLesson.contentType === "TEXT" ? (
             <div className="mx-auto max-w-3xl px-4 py-12">
               <h2 className="mb-4 text-xl font-semibold text-white">{currentLesson.title}</h2>
-              <div className="prose prose-invert max-w-none">
-                <p className="text-zinc-300 leading-relaxed">
-                  {currentLesson.contentBody || "Conteúdo em texto será exibido aqui."}
-                </p>
-              </div>
+              <LessonBody body={currentLesson.contentBody} />
             </div>
           ) : (
             <div className="mx-auto max-w-3xl px-4 py-12 text-center">
