@@ -2,7 +2,8 @@
  * 🌱 Seed — Curso: Alfabetização Digital e Gestão da Aula (Básico)
  *
  * Cria (idempotente, com atualização e limpeza) o instrutor Mauricio Kuhn e
- * o curso completo com 8 módulos e 65 aulas consolidadas.
+ * o curso completo com 8 módulos, 64 aulas consolidadas e um quiz de
+ * revisão por módulo (além da avaliação final).
  *
  * Cada aula cobre vários subtópicos organizados por SUBTÍTULOS internos
  * (linhas iniciadas com "## "), renderizados em destaque na página da aula.
@@ -137,30 +138,22 @@ Clique com o botão direito na pasta > "Alterar cor" e use um sistema de cores: 
 Dica: a previsibilidade é o grande ganho — qualquer arquivo novo já nasce com lugar definido, e a pergunta "cadê a prova do ano passado?" vira resposta em segundos.`,
   },
   {
-    title: "Estrelas, atalhos e modelos reutilizáveis",
+    title: "Produtividade: estrelas, atalhos, modelos e manutenção",
     video: "https://www.youtube.com/watch?v=5AzJwS14gXU",
-    body: `As estrelas são os favoritos do Drive: botão direito > "Adicionar à estrela" (ou a estrela ao lado do nome) e o arquivo aparece no item "Com estrela" do menu lateral. Marque os arquivos da rotina semanal — a planilha de notas, o plano da semana, a lista de chamada.
-
-## Atalhos
-O atalho é um ponteiro para um arquivo que mora em outro lugar: se o material oficial está no Drive compartilhado, crie um atalho dele no seu Meu Drive para acesso rápido, sem duplicar nada (botão direito > "Adicionar atalho ao Drive"). Use para pastas também.
+    body: `As estrelas são os favoritos do Drive: botão direito > "Adicionar à estrela" e o arquivo aparece no item "Com estrela" do menu lateral. Marque os arquivos da rotina semanal — a planilha de notas, o plano da semana, a lista de chamada. O atalho é um ponteiro para um arquivo que mora em outro lugar: se o material oficial está no Drive compartilhado, crie um atalho dele no seu Meu Drive (botão direito > "Adicionar atalho ao Drive") sem duplicar nada.
 
 ## Modelos reutilizáveis
-Monte uma vez os documentos que você usa sempre — prova com o cabeçalho da escola, plano de aula, bilhete aos pais — e para cada uso, botão direito > "Fazer uma cópia". Mantenha uma pasta "Modelos" com as versões atualizadas, e no Classroom use "Fazer uma cópia para cada aluno" para que cada estudante receba a própria cópia.
+Monte uma vez os documentos que você usa sempre — prova com o cabeçalho da escola, plano de aula, bilhete aos pais — e para cada uso, "Fazer uma cópia". Mantenha uma pasta "Modelos" com as versões atualizadas e, no Classroom, use "Fazer uma cópia para cada aluno" para que cada estudante receba a própria cópia.
+
+## Limpeza periódica
+Reserve 15 minutos ao fim de cada bimestre: identifique versões antigas, mova sem uso para a Lixeira e esvazie ao final. Use a busca com filtros de data ("before:2025-12-31") para achar materiais há muito intocados. Antes de excluir, siga a regra dos três passos: 1) confira se o arquivo não é a única cópia; 2) verifique se não é material oficial da escola; 3) em dúvida, arquive em uma pasta "Arquivado - 2025".
+
+## Manutenção coletiva
+A organização é um hábito coletivo: combine com a coordenação um calendário de limpeza (primeira semana do mês) e mantenha o padrão de pastas e nomes. Esvaziar Lixeira e Spam do Gmail resolve a maioria dos problemas de armazenamento antes de qualquer outra medida.
 
 Dica: combine estrelas com atalhos para os materiais do dia a dia — o caminho até o que você usa toda semana fica reduzido a um clique.`,
   },
-  {
-    title: "Limpeza periódica e boas práticas de manutenção",
-    body: `Um Drive sem manutenção vira depósito de versões antigas, rascunhos e arquivos "final final (2)". Reserve 15 minutos ao fim de cada bimestre: identifique versões antigas, mova sem uso para a Lixeira e esvazie ao final. Use a busca com filtros de data ("before:2025-12-31") para achar materiais há muito intocados.
 
-## A regra dos três passos
-Antes de excluir: 1) confira se o arquivo não é a única cópia de algo importante; 2) verifique se não é material oficial que deveria estar no Drive compartilhado; 3) em dúvida, arquive em uma pasta "Arquivado - 2025" em vez de excluir.
-
-## Hábito de organização
-A organização é um hábito coletivo: combine com a coordenação um calendário de limpeza (primeira semana do mês) e mantenha o padrão de pastas e nomes. Um Drive escolar limpo é o que permite que o conhecimento da escola seja encontrado por todos.
-
-Dica: a limpeza periódica também libera espaço — esvaziar Lixeira e Spam do Gmail costuma resolver a maioria dos problemas de armazenamento antes de qualquer outra medida.`,
-  },
 ];
 
 // ──────────────────────────────────────────
@@ -899,7 +892,7 @@ Dica: proponha à coordenação o "cuidado coletivo da lousa" — lista de verif
 const courseData: CourseData = {
   title: "Alfabetização Digital e Gestão da Aula (Básico)",
   description:
-    "Domine as ferramentas Google na prática: Drive, Docs, Apresentações, Forms, Planilhas, Agenda, Classroom e Lousa Digital. Curso 100% didático, passo a passo, pensado para professores que querem modernizar a gestão da aula sem complicação — com vídeo explicativo em aulas-chave e subtítulos que organizam o aprendizado.",
+    "Domine as ferramentas Google na prática: Drive, Docs, Apresentações, Forms, Planilhas, Agenda, Classroom e Lousa Digital. Curso 100% didático, passo a passo, com 64 aulas consolidadas em subtítulos, vídeo explicativo em aulas-chave e um quiz de revisão por módulo — além da avaliação final. Pense em modernizar a gestão da sua aula sem complicação.",
   category: "Ferramentas Digitais",
   instructorEmail: "mauricio@lms.com",
   modules: [
@@ -945,6 +938,227 @@ const courseData: CourseData = {
     },
   ],
 };
+
+// ──────────────────────────────────────────
+// Quizzes de revisão por módulo
+// ──────────────────────────────────────────
+
+type ModuleQuiz = {
+  title: string;
+  description: string;
+  questions: { text: string; opts: string[]; corr: number }[];
+};
+
+const moduleQuizzes: ModuleQuiz[] = [
+  {
+    title: "Quiz - Google Drive",
+    description: "Revisão do módulo de Google Drive: nuvem, organização e compartilhamento.",
+    questions: [
+      {
+        text: "Onde ficam os arquivos excluídos do Drive antes da exclusão definitiva?",
+        opts: ["Na pasta Downloads", "Na Lixeira (por 30 dias)", "No Google Fotos", "No Gmail"],
+        corr: 1,
+      },
+      {
+        text: "Qual permissão permite apenas ver o arquivo, sem alterar nada?",
+        opts: ["Editor", "Comentador", "Visualizador", "Proprietário"],
+        corr: 2,
+      },
+      {
+        text: "Quando um professor sai da escola, o que acontece com os arquivos do Drive compartilhado?",
+        opts: ["São apagados automaticamente", "Continuam na escola, pois pertencem à instituição", "Vão junto com a conta do professor", "Somem em 30 dias"],
+        corr: 1,
+      },
+      {
+        text: "Qual é o padrão de pastas recomendado para a escola?",
+        opts: ["Disciplina > Arquivo", "Ano > Turma > Disciplina", "Aluno > Prova", "Tudo em uma pasta só"],
+        corr: 1,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Docs",
+    description: "Revisão do módulo de Google Docs: edição, colaboração e correção.",
+    questions: [
+      {
+        text: "Qual recurso permite corrigir o texto do aluno sem alterar o original?",
+        opts: ["Ctrl+Z", "Modo Sugerir", "Copiar e colar", "Fazer uma cópia"],
+        corr: 1,
+      },
+      {
+        text: "Onde você vê quem editou o quê e quando em um documento?",
+        opts: ["Na barra de ferramentas", "No histórico de versões", "No menu Formatar", "Nos modelos prontos"],
+        corr: 1,
+      },
+      {
+        text: "Qual ferramenta transforma a sua fala em texto digitado?",
+        opts: ["Sumário automático", "Digitação por voz", "Modo apresentador", "Comentários"],
+        corr: 1,
+      },
+      {
+        text: "No Classroom, o que garante que cada aluno receba a própria cópia do arquivo?",
+        opts: ["Visualizador", "Editar o arquivo", "Fazer uma cópia para cada aluno", "Publicar na web"],
+        corr: 2,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Apresentações",
+    description: "Revisão do módulo de Google Apresentações: criação, temas e apresentação.",
+    questions: [
+      {
+        text: "Onde ficam as notas de apoio que só o professor vê durante a apresentação?",
+        opts: ["Nos slides", "No modo apresentador", "No sumário", "Nas animações"],
+        corr: 1,
+      },
+      {
+        text: "Qual recurso permite pular para outro slide ao clicar em um botão?",
+        opts: ["Transições", "Links de navegação", "Temas", "Layouts"],
+        corr: 1,
+      },
+      {
+        text: "Qual é a regra prática para slides legíveis?",
+        opts: ["10 linhas por slide", "6 linhas e 6 palavras por linha", "Texto corrido de um parágrafo", "Tudo em caixa alta"],
+        corr: 1,
+      },
+      {
+        text: "Como colocar um vídeo do YouTube dentro de um slide?",
+        opts: ["Inserir > Vídeo", "Copiar e colar link no texto", "Não é possível", "Inserir > Imagem"],
+        corr: 0,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Forms",
+    description: "Revisão do módulo de Google Forms: formulários, quizzes e respostas.",
+    questions: [
+      {
+        text: "O que o 'Transformar em questionário' ativa?",
+        opts: ["Envio por e-mail", "Correção automática com gabarito", "Código QR", "Restrição de acesso"],
+        corr: 1,
+      },
+      {
+        text: "Como mostrar perguntas diferentes conforme a resposta do aluno?",
+        opts: ["Com seções e lógica condicional", "Com imagens", "Com escala linear", "Com caixas de seleção"],
+        corr: 0,
+      },
+      {
+        text: "Onde você vê as respostas chegando em tempo real?",
+        opts: ["No menu Compartilhar", "Na aba Respostas (painel)", "No Google Agenda", "No histórico de versões"],
+        corr: 1,
+      },
+      {
+        text: "Para a nota do quiz voltar automaticamente para o Classroom, o que fazer?",
+        opts: ["Enviar o link no WhatsApp", "Criar o quiz como atividade 'Quiz' no Classroom", "Imprimir as respostas", "Compartilhar como Visualizador"],
+        corr: 1,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Planilhas",
+    description: "Revisão do módulo de Google Planilhas: fórmulas, dados e análise.",
+    questions: [
+      {
+        text: "Qual fórmula calcula a média das notas em A1 até A10?",
+        opts: ["=SOMA(A1:A10)", "=MÉDIA(A1:A10)", "=MAX(A1:A10)", "=CONT.SE(A1:A10)"],
+        corr: 1,
+      },
+      {
+        text: "Qual fórmula conta quantas vezes o 'P' aparece no intervalo (frequência)?",
+        opts: ["=CONT.SE", "=SOMARPRODUTO", "=MÍNIMO", "=CONGELAR"],
+        corr: 0,
+      },
+      {
+        text: "Qual recurso pinta células automaticamente conforme o valor?",
+        opts: ["Congelar linhas", "Formatação condicional", "Filtros", "Mesclar células"],
+        corr: 1,
+      },
+      {
+        text: "Como manter o cabeçalho visível enquanto a planilha rola?",
+        opts: ["Congelar a primeira linha", "Usar filtros", "Proteger o intervalo", "Criar gráfico"],
+        corr: 0,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Agenda",
+    description: "Revisão do módulo de Google Agenda: eventos, calendários e lembretes.",
+    questions: [
+      {
+        text: "Qual recurso cria automaticamente o link de vídeo no evento?",
+        opts: ["Google Forms", "Google Meet integrado ao evento", "Google Drive", "Google Classroom"],
+        corr: 1,
+      },
+      {
+        text: "Como ser avisado antes de um evento importante?",
+        opts: ["Configurando lembretes/notificações", "Convidando colegas", "Criando calendários", "Publicando na web"],
+        corr: 0,
+      },
+      {
+        text: "Como ter calendários separados por turma?",
+        opts: ["Criar múltiplos calendários com cores", "Usar um único calendário", "Enviar convites", "Usar lembretes"],
+        corr: 0,
+      },
+      {
+        text: "O que o nível 'ver apenas livre/ocupado' faz ao compartilhar?",
+        opts: ["Mostra todos os detalhes", "Mostra disponibilidade sem expor detalhes", "Bloqueia o calendário", "Envia e-mails diários"],
+        corr: 1,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Google Classroom",
+    description: "Revisão do módulo de Google Classroom: turma, atividades e entregas.",
+    questions: [
+      {
+        text: "Qual é a diferença essencial do Classroom para o WhatsApp?",
+        opts: ["É mais bonito", "Registro organizado de atividades, prazos e entregas", "Funciona sem internet", "Só funciona no celular"],
+        corr: 1,
+      },
+      {
+        text: "Para que serve o código da turma?",
+        opts: ["Para os alunos entrarem na turma", "Para acessar o Drive", "Para criar atividades", "Para chamadas de vídeo"],
+        corr: 0,
+      },
+      {
+        text: "O que 'Fazer uma cópia para cada aluno' garante?",
+        opts: ["Todos editam o mesmo arquivo", "Cada aluno recebe a própria cópia", "O arquivo vira PDF", "Ninguém vê o arquivo"],
+        corr: 1,
+      },
+      {
+        text: "Onde ver quem entregou e quem está pendente?",
+        opts: ["No painel da atividade / aba Trabalhos", "No Google Agenda", "No histórico de versões", "No Google Forms"],
+        corr: 0,
+      },
+    ],
+  },
+  {
+    title: "Quiz - Lousa Digital",
+    description: "Revisão do módulo de Lousa Digital: recursos, interatividade e gestão.",
+    questions: [
+      {
+        text: "Qual é a diferença essencial da lousa digital para o projetor comum?",
+        opts: ["É mais cara", "A interatividade: você toca e interage com a tela", "Tem melhor resolução", "Não precisa de energia"],
+        corr: 1,
+      },
+      {
+        text: "Qual recurso mostra a tela do computador de um aluno na lousa?",
+        opts: ["Calibração", "Espelhamento de tela", "Modo apresentador", "Zoom"],
+        corr: 1,
+      },
+      {
+        text: "Qual ferramenta aplica quizzes ao vivo com os celulares dos alunos?",
+        opts: ["Google Docs", "Kahoot e Quizizz", "Google Drive", "Google Agenda"],
+        corr: 1,
+      },
+      {
+        text: "O toque da lousa 'responde fora do dedo' — o que fazer?",
+        opts: ["Reiniciar o computador", "Fazer a calibração da lousa", "Trocar o navegador", "Apagar a lousa"],
+        corr: 1,
+      },
+    ],
+  },
+];
 
 // ──────────────────────────────────────────
 // Execução
@@ -1145,6 +1359,38 @@ async function main() {
     console.log("  ✅ Quiz final criado (8 questões, nota mínima 70%)");
   } else {
     console.log("  ⏭️  Quiz final já existe — pulando.");
+  }
+
+  // 5. Quizzes de revisão por módulo (idempotente)
+  for (const mq of moduleQuizzes) {
+    const qz = await prisma.quiz.findFirst({
+      where: { courseId: course.id, title: mq.title },
+    });
+    if (!qz) {
+      const quiz = await prisma.quiz.create({
+        data: {
+          title: mq.title,
+          description: mq.description,
+          passingScore: 60,
+          maxAttempts: 3,
+          courseId: course.id,
+        },
+      });
+      for (let qi = 0; qi < mq.questions.length; qi++) {
+        const q = mq.questions[qi];
+        const question = await prisma.question.create({
+          data: { text: q.text, orderIndex: qi + 1, quizId: quiz.id },
+        });
+        for (let oi = 0; oi < q.opts.length; oi++) {
+          await prisma.questionOption.create({
+            data: { text: q.opts[oi], isCorrect: oi === q.corr, questionId: question.id },
+          });
+        }
+      }
+      console.log(`  ✅ Quiz criado: ${mq.title} (${mq.questions.length} questões)`);
+    } else {
+      console.log(`  ⏭️  Quiz já existe: ${mq.title}`);
+    }
   }
 
   const totalLessons = await prisma.lesson.count({ where: { module: { courseId: course.id } } });
