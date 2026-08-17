@@ -104,11 +104,25 @@ export function CelebrationModal({
   onClose,
 }: CelebrationProps) {
   const displayIcon = icon || iconMap[type] || "🎉";
+  const continueRef = useRef<HTMLButtonElement>(null);
+
+  // Announce the dialog, move focus into it, and allow Escape to close.
+  useEffect(() => {
+    continueRef.current?.focus();
+    const onKey = (e: KeyboardEvent) => {
+      if (e.key === "Escape") onClose?.();
+    };
+    window.addEventListener("keydown", onKey);
+    return () => window.removeEventListener("keydown", onKey);
+  }, [onClose]);
 
   return (
     <AnimatePresence>
       <motion.div
         key={`celebration-${type}-${title}`}
+        role="dialog"
+        aria-modal="true"
+        aria-label={title}
         initial={{ opacity: 0 }}
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
@@ -157,6 +171,7 @@ export function CelebrationModal({
           </motion.div>
 
           <motion.button
+            ref={continueRef}
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             transition={{ delay: 0.5 }}

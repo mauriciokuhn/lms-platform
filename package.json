@@ -14,6 +14,7 @@
     "db:seed": "prisma db seed",
     "db:push": "prisma db push",
     "generate-assets": "node scripts/generate-assets.js",
+    "vapid:generate": "node scripts/generate-vapid-keys.js",
     "preflight": "npx tsx scripts/preflight.ts",
     "env:check": "npx tsx scripts/env-check.ts",
     "db:switch": "node scripts/switch-provider.js",

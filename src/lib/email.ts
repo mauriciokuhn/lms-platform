@@ -265,6 +265,83 @@ export async function sendCertificateEmail(email: string, name: string, courseTi
 }
 
 /**
+ * Warns the account owner that their login was temporarily locked after
+ * many consecutive failed attempts — so an attacker can't silently lock a
+ * legitimate account without the owner noticing. Links to password reset.
+ */
+export async function sendAccountLockedEmail(email: string, lockMinutes: number) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const content = `
+    <p>Olá!</p>
+    <p>Detectamos <strong>muitas tentativas de login falhas</strong> na sua conta da <strong>Ponto do Saber</strong>.</p>
+    <p>Por segurança, o login foi <strong>bloqueado temporariamente por ${lockMinutes} minuto${lockMinutes === 1 ? "" : "s"}</strong>.</p>
+    <p>Se foi você, aguarde o bloqueio expirar e tente novamente. Se você esqueceu a senha, redefina-a abaixo:</p>
+    <p style="text-align: center;">
+      <a href="${baseUrl}/esqueci-senha" class="btn">Redefinir Senha</a>
+    </p>
+    <p style="font-size: 13px; color: #71717a;">
+      Se você não tentou entrar na sua conta, <strong>mude sua senha imediatamente</strong> — alguém pode estar tentando acessá-la.
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "🔒 Login bloqueado temporariamente — Ponto do Saber",
+    html: baseHtml(content),
+  });
+}
+
+/**
+ * Sends the 2FA verification code. The code is short-lived (5 min) and
+ * single-use — it is the password equivalent for the second step.
+ */
+export async function sendTwoFactorEmail(email: string, code: string) {
+  const content = `
+    <p>Olá!</p>
+    <p>Use o código abaixo para concluir seu login na <strong>Ponto do Saber</strong>:</p>
+    <p style="text-align: center; font-size: 28px; font-weight: 700; letter-spacing: 6px; color: #18181b;">${code}</p>
+    <p style="font-size: 13px; color: #71717a;">
+      O código expira em <strong>5 minutos</strong> e só pode ser usado uma vez.
+      Se você não tentou entrar, ignore este e-mail.
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "🔐 Seu código de verificação — Ponto do Saber",
+    html: baseHtml(content),
+  });
+}
+
+/**
+ * Warns the account owner that a successful login just happened from a
+ * network/device this account hasn't used in the last 30 days. The raw IP
+ * is never stored or sent — only a rough network hint. Fire-and-forget:
+ * the login response must never depend on an email round-trip.
+ */
+export async function sendNewLoginEmail(email: string, when: string) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const content = `
+    <p>Olá!</p>
+    <p>Detectamos um <strong>novo login na sua conta</strong> da <strong>Ponto do Saber</strong> em <strong>${when}</strong>.</p>
+    <p>O acesso veio de um <strong>dispositivo ou rede diferente</strong> dos que você costuma usar.</p>
+    <p style="text-align: center;">
+      <a href="${baseUrl}/esqueci-senha" class="btn">Redefinir Senha</a>
+    </p>
+    <p style="font-size: 13px; color: #71717a;">
+      Se foi você, ignore este e-mail. Se <strong>não</strong> foi você, alguém pode ter acessado sua conta —
+      <strong>mude sua senha imediatamente</strong>.
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: "🆕 Novo login na sua conta — Ponto do Saber",
+    html: baseHtml(content),
+  });
+}
+
+/**
  * Send course published notification
  */
 export async function sendCoursePublishedEmail(email: string, name: string, courseTitle: string, courseUrl: string) {
@@ -346,6 +423,56 @@ export async function sendMonthlySummaryEmail(
   return sendEmail({
     to: email,
     subject: `📊 Seu resumo mensal — ${stats.monthLabel}`,
+    html: baseHtml(content),
+  });
+}
+
+/**
+ * Sends the admin's daily security digest: the day's login volume and any
+ * sessions that were revoked remotely (by the owner or by an admin).
+ * Triggered once per day from the admin dashboard — no cron needed.
+ */
+export async function sendSecurityDailySummaryEmail(
+  email: string,
+  summary: {
+    dateLabel: string;
+    logins: number;
+    distinctUsers: number;
+    revokedSessions: { userEmail: string; when: string }[];
+  }
+) {
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "http://localhost:3000";
+  const revokedLines =
+    summary.revokedSessions.length > 0
+      ? summary.revokedSessions
+          .slice(0, 10)
+          .map(
+            (s) =>
+              `<p style="margin:2px 0;">• <strong>${s.userEmail}</strong> — ${s.when}</p>`
+          )
+          .join("")
+      : "<p style=\"margin:2px 0;\">Nenhuma sessão encerrada remotamente hoje.</p>";
+
+  const content = `
+    <p>Olá! 👋</p>
+    <p>Resumo de segurança da <strong>Ponto do Saber</strong> em <strong>${summary.dateLabel}</strong>:</p>
+    <div class="details">
+      <p>🔑 <strong>${summary.logins}</strong> ${summary.logins === 1 ? "login registrado" : "logins registrados"} (${summary.distinctUsers} ${summary.distinctUsers === 1 ? "usuário" : "usuários"} diferentes)</p>
+      <p>🚫 <strong>${summary.revokedSessions.length}</strong> ${summary.revokedSessions.length === 1 ? "sessão encerrada" : "sessões encerradas"} remotamente</p>
+    </div>
+    <p><strong>Sessões encerradas:</strong></p>
+    ${revokedLines}
+    <p style="text-align: center;">
+      <a href="${baseUrl}/admin/alunos" class="btn">Gerenciar Sessões</a>
+    </p>
+    <p style="font-size: 13px; color: #71717a;">
+      IPs são armazenados apenas como hash — nunca o endereço real.
+    </p>
+  `;
+
+  return sendEmail({
+    to: email,
+    subject: `🛡️ Resumo Diário de Segurança — ${summary.dateLabel}`,
     html: baseHtml(content),
   });
 }

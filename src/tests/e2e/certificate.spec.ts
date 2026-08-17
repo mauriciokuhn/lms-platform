@@ -1,4 +1,5 @@
 import { test, expect, type Page } from "@playwright/test";
+import { registerUser } from "./register";
 
 /**
  * Full student journey: register → enroll → watch lessons → pass quiz → get certificate.
@@ -38,13 +39,7 @@ async function disableAnimations(page: Page) {
 }
 
 async function register(page: Page) {
-  const email = `e2e-${Date.now()}@test.com`;
-  await page.goto("/register");
-  await page.fill('#name', "Aluno E2E");
-  await page.fill('#email', email);
-  await page.fill('#password', "teste123");
-  await page.click('button[type="submit"]');
-  await page.waitForURL(/\/dashboard/, { timeout: 20000 });
+  await registerUser(page);
 }
 
 async function openCourseAndEnroll(page: Page) {
@@ -145,22 +140,14 @@ test.describe("Certificate Flow", () => {
 
     await passQuiz(page);
 
-    // Certificate page should list the course with a CERT- code
-    await page.getByRole("link", { name: /Ver Certificados/i }).click();
-    await page.waitForURL(/\/certificados/);
+    // The quiz result links straight to the generated certificate.
+    await page.getByRole("link", { name: /Ver Certificado/i }).click();
+    await page.waitForURL(/\/certificados\//);
 
-    // Poll instead of a single assertion: the certificate row may render a
-    // moment after the page transition.
-    await expect
-      .poll(
-        async () => {
-          const heading = page.getByRole("heading", { name: COURSE_TITLE });
-          return (await heading.count()) > 0 && (await heading.isVisible());
-        },
-        { timeout: 20000 }
-      )
-      .toBe(true);
-
+    // Direct certificate page: the course is rendered (as text, not a
+    // heading) along with the CERT- code.
+    await expect(page.getByText(COURSE_TITLE)).toBeVisible({ timeout: 20000 });
+    await expect(page.getByText("Certificado Verificado")).toBeVisible({ timeout: 10000 });
     await expect(page.getByText(/CERT-/)).toBeVisible({ timeout: 10000 });
   });
 });

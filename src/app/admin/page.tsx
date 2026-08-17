@@ -38,20 +38,41 @@ interface InstructorMetric {
   totalStudents: number;
 }
 
+interface ChallengeStats {
+  total: { issued: number; solved: number; failed: number; solveRate: number | null };
+  byAccount: { email: string; issued: number; solved: number; failed: number }[];
+}
+
+interface SecurityEvents {
+  logins: number;
+  distinctUsers: number;
+  revokedSessions: { userEmail: string; when: string }[];
+}
+
 export default function AdminDashboard() {
   const [metrics, setMetrics] = useState<Metrics | null>(null);
   const [recentEnrollments, setRecentEnrollments] = useState<RecentEnrollment[]>([]);
   const [recentStudents, setRecentStudents] = useState<RecentStudent[]>([]);
   const [instructorMetrics, setInstructorMetrics] = useState<InstructorMetric[]>([]);
   const [pendingCount, setPendingCount] = useState(0);
+  const [challengeStats, setChallengeStats] = useState<ChallengeStats | null>(null);
+  const [securityEvents, setSecurityEvents] = useState<SecurityEvents | null>(null);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     async function loadData() {
       try {
-        const [metricsRes, instrRes] = await Promise.all([
+        // Session-history housekeeping (old/revoked records) — fire and
+        // forget so it never blocks the dashboard render.
+        fetch("/api/admin/security-cleanup", { method: "POST" }).catch(() => {});
+
+        // The daily security digest POST doubles as the card's data source
+        // (idempotent per day — the email fires at most once).
+        const [metricsRes, instrRes, challengeRes, securityRes] = await Promise.all([
           fetch("/api/admin/metrics"),
           fetch("/api/admin/instructor-metrics"),
+          fetch("/api/admin/challenge-stats"),
+          fetch("/api/admin/security-summary", { method: "POST" }),
         ]);
         if (metricsRes.ok) {
           const data = await metricsRes.json();
@@ -63,6 +84,14 @@ export default function AdminDashboard() {
           const data = await instrRes.json();
           setInstructorMetrics(data.instructors || []);
           setPendingCount(data.pendingCourses || 0);
+        }
+        if (challengeRes.ok) {
+          const data = await challengeRes.json();
+          setChallengeStats(data.stats);
+        }
+        if (securityRes.ok) {
+          const data = await securityRes.json();
+          setSecurityEvents(data.events || null);
         }
       } catch (err) {
         console.error("Error loading metrics:", err);
@@ -183,6 +212,111 @@ export default function AdminDashboard() {
                 </div>
               )}
             </div>
+          </div>
+
+          {/* Anti-bot Challenge Metrics */}
+          <div className="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                🛡️ Desafio Anti-Bot
+              </h2>
+              <span className="text-xs text-zinc-400 dark:text-zinc-500">desde o último restart</span>
+            </div>
+            {!challengeStats ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Sem dados ainda.</p>
+            ) : (
+              <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Desafios emitidos</p>
+                  <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{challengeStats.total.issued}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Resolvidos</p>
+                  <p className="mt-1 text-2xl font-bold text-green-600 dark:text-green-400">{challengeStats.total.solved}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Falhos</p>
+                  <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">{challengeStats.total.failed}</p>
+                </div>
+                <div>
+                  <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Taxa de acerto</p>
+                  <p className="mt-1 text-2xl font-bold text-amber-600 dark:text-amber-400">
+                    {challengeStats.total.solveRate === null ? "—" : `${challengeStats.total.solveRate}%`}
+                  </p>
+                </div>
+              </div>
+            )}
+            {challengeStats && challengeStats.byAccount.length > 0 && (
+              <div className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                  Contas mais visadas (por falhas)
+                </p>
+                <div className="space-y-1">
+                  {challengeStats.byAccount
+                    .slice(0, 5)
+                    .map((acc) => (
+                      <div key={acc.email} className="flex items-center justify-between text-sm">
+                        <span className="truncate text-zinc-700 dark:text-zinc-300">{acc.email}</span>
+                        <span className="shrink-0 text-xs text-zinc-400">
+                          {acc.failed} falha{acc.failed === 1 ? "" : "s"} · {acc.issued} emitidos
+                        </span>
+                      </div>
+                    ))}
+                </div>
+              </div>
+            )}
+          </div>
+
+          {/* Daily Security Summary */}
+          <div className="mb-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 shadow-sm">
+            <div className="mb-4 flex items-center justify-between">
+              <h2 className="text-lg font-semibold text-zinc-900 dark:text-white">
+                🛡️ Resumo de Segurança de Hoje
+              </h2>
+              <Link
+                href="/admin/alunos"
+                className="text-xs font-medium text-zinc-500 transition-colors hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+              >
+                Gerenciar Sessões →
+              </Link>
+            </div>
+            {!securityEvents ? (
+              <p className="text-sm text-zinc-400 dark:text-zinc-500">Sem dados ainda.</p>
+            ) : (
+              <>
+                <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-3">
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Logins registrados</p>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{securityEvents.logins}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Usuários distintos</p>
+                    <p className="mt-1 text-2xl font-bold text-zinc-900 dark:text-white">{securityEvents.distinctUsers}</p>
+                  </div>
+                  <div>
+                    <p className="text-xs font-medium text-zinc-500 dark:text-zinc-400">Sessões encerradas</p>
+                    <p className="mt-1 text-2xl font-bold text-red-600 dark:text-red-400">
+                      {securityEvents.revokedSessions.length}
+                    </p>
+                  </div>
+                </div>
+                {securityEvents.revokedSessions.length > 0 && (
+                  <div className="mt-4 border-t border-zinc-100 pt-3 dark:border-zinc-800">
+                    <p className="mb-2 text-xs font-medium text-zinc-500 dark:text-zinc-400">
+                      Sessões encerradas hoje
+                    </p>
+                    <div className="space-y-1">
+                      {securityEvents.revokedSessions.slice(0, 5).map((s, i) => (
+                        <div key={i} className="flex items-center justify-between text-sm">
+                          <span className="truncate text-zinc-700 dark:text-zinc-300">{s.userEmail}</span>
+                          <span className="shrink-0 text-xs text-zinc-400">{s.when}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+                )}
+              </>
+            )}
           </div>
 
           {/* Pending Courses Alert */}

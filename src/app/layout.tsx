@@ -88,6 +88,17 @@ export default function RootLayout({
       suppressHydrationWarning
     >
       <head>
+        {/* Apply the persisted theme before first paint. ThemeToggle also
+            manages the class on pages that mount it, but lesson/quiz/course
+            pages have no toggle — without this every page would open light
+            regardless of the saved preference. Mirrors readInitialTheme in
+            src/components/ui/theme-toggle.tsx. */}
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("theme");if(t==="dark"||(t!=="light"&&window.matchMedia("(prefers-color-scheme: dark)").matches)){document.documentElement.classList.add("dark");}}catch(e){}})();`,
+          }}
+        />
+
         {/* PWA meta tags */}
         <meta name="application-name" content="Ponto do Saber" />
         <meta name="apple-mobile-web-app-title" content="Ponto do Saber" />

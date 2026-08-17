@@ -60,6 +60,17 @@ self.addEventListener('fetch', (event) => {
   // Skip non-GET requests
   if (request.method !== 'GET') return;
 
+  // ── EventSource / SSE streams: never intercept ──
+  // Streaming responses never complete, so networkFirst's cache.put on the
+  // response clone would keep the SW's copy of the stream (and its browser
+  // connection) open forever. With several long-lived streams the per-origin
+  // connection pool fills up and page navigations hang. Let the browser
+  // handle the stream directly, like it does in dev (where the SW is
+  // unregistered) — the connection then dies with the page on unload.
+  if (url.pathname === '/api/events/subscribe') {
+    return;
+  }
+
   // ── API requests: Network first, fallback to cache ──
   if (url.pathname.startsWith('/api/')) {
     event.respondWith(networkFirst(request, API_CACHE));

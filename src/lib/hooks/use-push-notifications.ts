@@ -47,13 +47,17 @@ export function usePushNotifications(): PushNotificationsState {
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
-    const ok =
-      typeof window !== "undefined" &&
-      "Notification" in window &&
-      "serviceWorker" in navigator &&
-      "PushManager" in window;
-    setSupported(ok);
-    if (ok) setPermission(Notification.permission);
+    // Deferred so the setState calls are not synchronous within the effect
+    // (avoids cascading renders — react-hooks/set-state-in-effect).
+    (async () => {
+      const ok =
+        typeof window !== "undefined" &&
+        "Notification" in window &&
+        "serviceWorker" in navigator &&
+        "PushManager" in window;
+      setSupported(ok);
+      if (ok) setPermission(Notification.permission);
+    })();
   }, []);
 
   /** Ensure at least one service worker registration exists (push needs it). */
@@ -85,7 +89,10 @@ export function usePushNotifications(): PushNotificationsState {
 
   // On mount, check if already subscribed
   useEffect(() => {
-    if (supported) refresh();
+    if (!supported) return;
+    (async () => {
+      await refresh();
+    })();
   }, [supported, refresh]);
 
   const enable = useCallback(async (): Promise<boolean> => {
@@ -118,6 +125,13 @@ export function usePushNotifications(): PushNotificationsState {
 
       // Register SW if needed, then subscribe
       const registration = await ensureRegistration();
+      // pushManager.subscribe requires an ACTIVE worker. In dev the app
+      // unregisters the SW on load (pwa-install), so the on-demand
+      // registration here may still be installing/activating — wait for
+      // the active worker before subscribing ("no active Service Worker").
+      if (!registration.active) {
+        await navigator.serviceWorker.ready;
+      }
       let subscription = await registration.pushManager.getSubscription();
       if (!subscription) {
         subscription = await registration.pushManager.subscribe({
@@ -150,7 +164,7 @@ export function usePushNotifications(): PushNotificationsState {
     } finally {
       setLoading(false);
     }
-  }, []);
+  }, [ensureRegistration]);
 
   const disable = useCallback(async (): Promise<boolean> => {
     setLoading(true);

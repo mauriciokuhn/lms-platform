@@ -12,17 +12,60 @@ export default function LoginPage() {
   const [password, setPassword] = useState("");
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  // Anti-bot challenge (shown after repeated failed logins): the server
+  // issues a one-time math question via GET /api/auth/challenge.
+  const [challenge, setChallenge] = useState<{ token: string; question: string } | null>(null);
+  const [challengeAnswer, setChallengeAnswer] = useState("");
+  // 2FA: after the password is accepted, an emailed code must be confirmed.
+  const [twoFactorRequired, setTwoFactorRequired] = useState(false);
+  const [twoFactorCode, setTwoFactorCode] = useState("");
+  const [twoFactorMessage, setTwoFactorMessage] = useState("");
+
+  async function maybeLoadChallenge(emailValue: string) {
+    if (!emailValue) return;
+    try {
+      const res = await fetch(`/api/auth/challenge?email=${encodeURIComponent(emailValue)}`);
+      if (!res.ok) return;
+      const data = await res.json();
+      if (data.required && data.token) {
+        setChallenge({ token: data.token, question: data.question });
+        setChallengeAnswer("");
+      }
+    } catch {
+      // ignore — the challenge is a best-effort gate
+    }
+  }
 
   async function handleSubmit(e: React.FormEvent) {
     e.preventDefault();
     setLoading(true);
     setError("");
 
-    const result = await signIn("credentials", {
-      email,
-      password,
-      redirect: false,
-    });
+    let result;
+    try {
+      result = await signIn("credentials", {
+        email,
+        password,
+        ...(challenge ? { challengeToken: challenge.token, challengeAnswer } : {}),
+        redirect: false,
+      });
+    } catch {
+      // The Auth.js client throws when the response isn't the standard shape
+      // (e.g. the rate limiter's 429 body before the url fix, or a dropped
+      // connection). Unstick the button and surface a generic message
+      // instead of freezing on "Entrando..." forever.
+      setError("Não foi possível entrar. Tente novamente.");
+      setLoading(false);
+      return;
+    }
+
+    // 2FA pending: the wrapper answered 202 and emailed a code.
+    if (result?.status === 202 || (result?.url ?? "").includes("TwoFactorRequired")) {
+      setTwoFactorRequired(true);
+      setTwoFactorMessage("Código de verificação enviado para seu e-mail.");
+      setLoading(false);
+      return;
+    }
 
     // Rate-limited (429): the wrapper returns { error } with X-RateLimit-*.
     if (result?.status === 429 || (result?.error ?? "").includes("Muitas requisições")) {
@@ -31,8 +74,18 @@ export default function LoginPage() {
       return;
     }
 
+    // Wrong (or missing) anti-bot challenge answer → issue a fresh one.
+    if (result?.error === "ChallengeFailed") {
+      setError("Resposta incorreta do desafio de segurança. Responda novamente.");
+      await maybeLoadChallenge(email);
+      setLoading(false);
+      return;
+    }
+
     if (result?.error) {
       setError("Email ou senha inválidos.");
+      // After enough failures the next submit requires the challenge.
+      await maybeLoadChallenge(email);
       setLoading(false);
       return;
     }
@@ -41,6 +94,38 @@ export default function LoginPage() {
     const session = await getSession();
     router.push(getRoleHome(session?.user?.role as string | undefined));
     router.refresh();
+  }
+
+  async function handleVerifyCode() {
+    setLoading(true);
+    setError("");
+    setTwoFactorMessage("");
+    try {
+      const res = await fetch("/api/auth/2fa/verify", {
+        method: "POST",
+        headers: { "content-type": "application/json" },
+        body: JSON.stringify({ email, code: twoFactorCode }),
+      });
+      const data = await res.json().catch(() => ({}));
+      if (!res.ok) {
+        setError(data.error || "Código inválido.");
+        setTwoFactorCode("");
+        return;
+      }
+      const session = await getSession();
+      router.push(getRoleHome(session?.user?.role as string | undefined));
+      router.refresh();
+    } catch {
+      setError("Não foi possível verificar o código. Tente novamente.");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  function handleEmailChange(value: string) {
+    setEmail(value);
+    // A different account has its own failure history — drop the challenge.
+    if (challenge) setChallenge(null);
   }
 
   return (
@@ -77,7 +162,7 @@ export default function LoginPage() {
                 id="email"
                 type="email"
                 value={email}
-                onChange={(e) => setEmail(e.target.value)}
+                onChange={(e) => handleEmailChange(e.target.value)}
                 placeholder="seu@email.com"
                 required
                 className="mt-1 block w-full rounded-lg border border-zinc-300 px-3 py-2 text-sm shadow-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500"
@@ -110,6 +195,64 @@ export default function LoginPage() {
                 Esqueceu a senha?
               </Link>
             </div>
+
+            {twoFactorRequired && (
+              <div className="rounded-lg border border-blue-300 bg-blue-50 p-3 dark:border-blue-800 dark:bg-blue-950/40">
+                <label
+                  htmlFor="twoFactor"
+                  className="block text-sm font-medium text-blue-800 dark:text-blue-300"
+                >
+                  Verificação em duas etapas
+                </label>
+                <p className="mt-1 text-xs text-blue-700 dark:text-blue-400">
+                  {twoFactorMessage || "Digite o código enviado para seu e-mail."}
+                </p>
+                <input
+                  id="twoFactor"
+                  type="text"
+                  maxLength={16}
+                  value={twoFactorCode}
+                  onChange={(e) => setTwoFactorCode(e.target.value.toUpperCase())}
+                  placeholder="000000 ou XXXXX-XXXX"
+                  required
+                  autoFocus
+                  className="mt-2 block w-full rounded-lg border border-blue-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-zinc-400 focus:border-blue-500 focus:outline-none focus:ring-1 focus:ring-blue-500 dark:bg-zinc-900"
+                />
+                <button
+                  type="button"
+                  onClick={handleVerifyCode}
+                  disabled={loading || twoFactorCode.trim().length < 6}
+                  className="mt-3 w-full rounded-lg bg-blue-600 px-4 py-2 text-sm font-semibold text-white transition hover:bg-blue-500 disabled:cursor-not-allowed disabled:opacity-50"
+                >
+                  {loading ? "Verificando..." : "Verificar código"}
+                </button>
+              </div>
+            )}
+
+            {challenge && (
+              <div className="rounded-lg border border-amber-300 bg-amber-50 p-3 dark:border-amber-800 dark:bg-amber-950/40">
+                <label
+                  htmlFor="challenge"
+                  className="block text-sm font-medium text-amber-800 dark:text-amber-300"
+                >
+                  Verificação de segurança
+                </label>
+                <p className="mt-1 text-xs text-amber-700 dark:text-amber-400">
+                  {challenge.question}
+                </p>
+                <input
+                  id="challenge"
+                  type="text"
+                  inputMode="numeric"
+                  value={challengeAnswer}
+                  onChange={(e) => setChallengeAnswer(e.target.value)}
+                  placeholder="Resposta"
+                  required
+                  autoFocus
+                  className="mt-2 block w-full rounded-lg border border-amber-300 bg-white px-3 py-2 text-sm shadow-sm placeholder:text-zinc-400 focus:border-amber-500 focus:outline-none focus:ring-1 focus:ring-amber-500 dark:bg-zinc-900"
+                />
+              </div>
+            )}
 
             <button
               type="submit"

@@ -27,6 +27,7 @@ interface QuizData {
   maxAttempts: number;
   questions: Question[];
   courseId: string | null;
+  _count?: { attempts?: number };
 }
 
 interface QuizResult {
@@ -44,6 +45,7 @@ interface QuizResult {
     isCorrect: boolean;
     options: Option[];
   }[];
+  certificate?: { code: string };
 }
 
 export default function QuizPage({
@@ -61,6 +63,8 @@ export default function QuizPage({
   const [answers, setAnswers] = useState<Record<string, string>>({});
   const [result, setResult] = useState<QuizResult | null>(null);
   const [error, setError] = useState("");
+  // Attempts already used by the current user (from the quiz detail API).
+  const [attemptsUsed, setAttemptsUsed] = useState(0);
 
   useEffect(() => {
     async function loadQuiz() {
@@ -72,6 +76,7 @@ export default function QuizPage({
         }
         const data = await res.json();
         setQuiz(data);
+        setAttemptsUsed(data._count?.attempts ?? 0);
       } catch (err) {
         console.error("Error loading quiz:", err);
       } finally {
@@ -80,6 +85,17 @@ export default function QuizPage({
     }
     loadQuiz();
   }, [courseId, quizId, router]);
+
+  // Warn before leaving with answered questions (they would be lost).
+  useEffect(() => {
+    if (!answers || Object.keys(answers).length === 0 || result) return;
+    const handler = (e: BeforeUnloadEvent) => {
+      e.preventDefault();
+      e.returnValue = "";
+    };
+    window.addEventListener("beforeunload", handler);
+    return () => window.removeEventListener("beforeunload", handler);
+  }, [answers, result]);
 
   function handleSelectOption(questionId: string, optionId: string) {
     if (result) return;
@@ -111,11 +127,18 @@ export default function QuizPage({
       const data = await res.json();
 
       if (!res.ok) {
+        // 403 = attempt limit reached (stale page / parallel tab) — sync
+        // the counter so the UI disables the submit button.
+        if (res.status === 403 && quiz) {
+          setAttemptsUsed(quiz.maxAttempts);
+        }
         setError(data.error || "Erro ao enviar respostas");
         return;
       }
 
       setResult(data);
+      // This attempt just counted — keep the UI in sync without a reload.
+      setAttemptsUsed((prev) => prev + 1);
 
       if (data.passed) {
         showSuccess("Parabéns!", `Você acertou ${data.correct} de ${data.total} questões e foi aprovado!`);
@@ -176,8 +199,15 @@ export default function QuizPage({
           <div className="mb-6 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-4 shadow-sm">
             <p className="text-sm text-zinc-600 dark:text-zinc-300">{quiz.description}</p>
             <p className="mt-2 text-xs text-zinc-400 dark:text-zinc-500">
-              Nota mínima: {quiz.passingScore}% | Tentativas máximas: {quiz.maxAttempts}
+              Nota mínima: {quiz.passingScore}% | Tentativas usadas: {attemptsUsed} de {quiz.maxAttempts}
             </p>
+          </div>
+        )}
+
+        {/* Attempts exhausted — the server would reject any further submit. */}
+        {!result && session?.user && quiz.maxAttempts > 0 && attemptsUsed >= quiz.maxAttempts && (
+          <div className="mb-4 rounded-lg bg-amber-50 dark:bg-amber-950 p-3 text-sm text-amber-700 dark:text-amber-300">
+            Você já usou todas as {quiz.maxAttempts} tentativas deste questionário.
           </div>
         )}
 
@@ -199,6 +229,14 @@ export default function QuizPage({
                 {result.correct} de {result.total} questões corretas
                 {!result.passed && ` (mínimo: ${result.passingScore}%)`}
               </p>
+              <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                Tentativas usadas: {attemptsUsed} de {quiz.maxAttempts}
+              </p>
+              {!result.passed && attemptsUsed < quiz.maxAttempts && (
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Revise o gabarito nas respostas abaixo e tente novamente.
+                </p>
+              )}
               {result.passed && (
                 <div className="mt-4 flex items-center justify-center gap-3">
                   <Link
@@ -207,20 +245,34 @@ export default function QuizPage({
                   >
                     Voltar ao Curso
                   </Link>
-                  <Link
-                    href="/certificados"
-                    className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-6 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                  >
-                    Ver Certificados
-                  </Link>
+                  {result.certificate ? (
+                    <Link
+                      href={`/certificados/${result.certificate.code}`}
+                      className="inline-flex items-center gap-2 rounded-lg bg-green-600 px-6 py-2 text-sm font-semibold text-white hover:bg-green-700"
+                    >
+                      🎓 Ver Certificado
+                    </Link>
+                  ) : (
+                    <Link
+                      href="/certificados"
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-6 py-2 text-sm font-semibold text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      Ver Certificados
+                    </Link>
+                  )}
                 </div>
               )}
-              {!result.passed && (
+              {!result.passed && attemptsUsed >= quiz.maxAttempts && (
+                <p className="mt-4 text-sm text-zinc-500 dark:text-zinc-400">
+                  Você usou todas as {quiz.maxAttempts} tentativas deste questionário.
+                </p>
+              )}
+              {!result.passed && attemptsUsed < quiz.maxAttempts && (
                 <button
                   onClick={() => { setResult(null); setAnswers({}); }}
                   className="mt-4 rounded-lg bg-zinc-900 dark:bg-white px-6 py-2 text-sm font-semibold text-white dark:text-zinc-900 hover:bg-zinc-800 dark:hover:bg-zinc-200"
                 >
-                  Tentar Novamente
+                  Tentar Novamente (restam {quiz.maxAttempts - attemptsUsed})
                 </button>
               )}
             </div>
@@ -314,7 +366,7 @@ export default function QuizPage({
           })}
         </div>
 
-        {!result && (
+        {!result && session?.user && (quiz.maxAttempts === 0 || attemptsUsed < quiz.maxAttempts) && (
           <div className="mt-8 text-center">
             <button
               onClick={handleSubmit}
@@ -323,6 +375,20 @@ export default function QuizPage({
             >
               {submitting ? "Corrigindo..." : "Enviar Respostas"}
             </button>
+          </div>
+        )}
+
+        {!result && !session?.user && (
+          <div className="mt-8 rounded-xl border border-zinc-200 dark:border-zinc-800 bg-white dark:bg-zinc-900 p-6 text-center shadow-sm">
+            <p className="text-sm text-zinc-600 dark:text-zinc-300">
+              Entre para responder o questionário e salvar seu resultado.
+            </p>
+            <Link
+              href="/login"
+              className="mt-4 inline-flex items-center gap-2 rounded-lg bg-zinc-900 dark:bg-white px-8 py-3 text-sm font-semibold text-white dark:text-zinc-900 transition hover:bg-zinc-800 dark:hover:bg-zinc-200"
+            >
+              Entrar
+            </Link>
           </div>
         )}
       </main>

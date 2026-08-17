@@ -81,6 +81,10 @@ export async function POST(
     const score = Math.round((correctAnswers / totalQuestions) * 100);
     const passed = score >= quiz.passingScore;
 
+    // Set when the certificate is available for this course (created just now
+    // or already existing) so the quiz page can link straight to it.
+    let certificateCode: string | undefined;
+
     // Save attempt
     const attempt = await db.quizAttempt.create({
       data: {
@@ -180,14 +184,16 @@ export async function POST(
           });
 
           if (!existingCert) {
-            const code = `CERT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
+            certificateCode = `CERT-${Date.now().toString(36).toUpperCase()}-${Math.random().toString(36).slice(2, 6).toUpperCase()}`;
             await db.certificate.create({
               data: {
                 userId: session.user.id,
                 courseId: quiz.courseId,
-                certificateCode: code,
+                certificateCode,
               },
             });
+          } else {
+            certificateCode = existingCert.certificateCode;
           }
         }
       }
@@ -201,6 +207,9 @@ export async function POST(
       passed,
       passingScore: quiz.passingScore,
       results,
+      ...(certificateCode
+        ? { certificate: { code: certificateCode } }
+        : {}),
     });
   } catch (error) {
     logger.error("POST /api/courses/[id]/quizzes/[quizId]/attempt error", { error: error instanceof Error ? error.message : String(error) });

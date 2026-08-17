@@ -92,8 +92,10 @@ export async function cleanupTestDb() {
     prisma.userXP.deleteMany(),
     prisma.achievement.deleteMany(),
     prisma.notification.deleteMany(),
+    prisma.pushSubscription.deleteMany(),
     prisma.session.deleteMany(),
     prisma.account.deleteMany(),
+    prisma.loginHistory.deleteMany(),
     prisma.user.deleteMany(),
   ]);
 }

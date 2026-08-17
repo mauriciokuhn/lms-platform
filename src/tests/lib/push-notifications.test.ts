@@ -157,9 +157,58 @@ describe("push notifications", () => {
     expect(result.error).toBe(boom);
   });
 
-  it("notifyUserPush is a placeholder that reports zero deliveries", async () => {
+  it("notifyUserPush reports zero deliveries when the user has no subscriptions", async () => {
+    vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
     const result = await notifyUserPush("user-1", PAYLOAD);
-    expect(result).toEqual({ success: true, delivered: 0 });
+    expect(result).toEqual({ success: true, delivered: 0, total: 0, simulated: false });
+  });
+
+  it("notifyUserPush delivers to all the user's subscriptions (real send)", async () => {
+    vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "public-key");
+    const user = await createTestUser(prisma, { email: "push-multi@test.com" });
+    await saveSubscription(user.id, SUBSCRIPTION);
+    await saveSubscription(user.id, {
+      endpoint: "https://fcm.googleapis.com/push/xyz789",
+      keys: { p256dh: "p256dh-2", auth: "auth-2" },
+    });
+    sendNotificationMock.mockResolvedValue(undefined);
+
+    const result = await notifyUserPush(user.id, PAYLOAD);
+
+    expect(result).toEqual({ success: true, delivered: 2, total: 2, simulated: false });
+    expect(sendNotificationMock).toHaveBeenCalledTimes(2);
+  });
+
+  it("notifyUserPush marks the delivery as simulated when VAPID is not configured", async () => {
+    vi.stubEnv("VAPID_PRIVATE_KEY", "");
+    const user = await createTestUser(prisma, { email: "push-sim@test.com" });
+    await saveSubscription(user.id, SUBSCRIPTION);
+
+    const result = await notifyUserPush(user.id, PAYLOAD);
+
+    expect(result.success).toBe(true);
+    expect(result.delivered).toBe(0);
+    expect(result.total).toBe(1);
+    expect(result.simulated).toBe(true);
+    expect(sendNotificationMock).not.toHaveBeenCalled();
+  });
+
+  it("notifyUserPush cleans up expired subscriptions (410) during fan-out", async () => {
+    vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
+    const user = await createTestUser(prisma, { email: "push-expired@test.com" });
+    await saveSubscription(user.id, SUBSCRIPTION);
+    sendNotificationMock.mockRejectedValue({ statusCode: 410 });
+
+    const result = await notifyUserPush(user.id, PAYLOAD);
+
+    expect(result.success).toBe(true);
+    expect(result.delivered).toBe(0);
+    expect(result.total).toBe(1);
+    const remaining = await prisma.pushSubscription.count({
+      where: { userId: user.id },
+    });
+    expect(remaining).toBe(0);
   });
 
   it("generates VAPID keys when web-push is available", async () => {

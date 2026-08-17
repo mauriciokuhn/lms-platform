@@ -26,6 +26,12 @@ env:
   # but the auth config reads these env vars at build time.
   GOOGLE_CLIENT_ID: ${{ secrets.GOOGLE_CLIENT_ID || '' }}
   GOOGLE_CLIENT_SECRET: ${{ secrets.GOOGLE_CLIENT_SECRET || '' }}
+  # Pinned explicitly: the lint job materializes .env from this block (the
+  # env:check contract), and the e2e job's `next start` must bind 3000 — a
+  # stray PORT env var (e.g. PORT=0 on some dev machines) otherwise makes it
+  # pick a random port and the e2e webServer times out.
+  NEXT_PUBLIC_APP_URL: "http://localhost:3000"
+  PORT: "3000"
 
 jobs:
   lint:
@@ -147,7 +153,9 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    timeout-minutes: 20
+    # 45 Playwright tests, serial (workers=1 in CI) with 2 retries — leave
+    # room for the build + cold bundle boot on top of the suite itself.
+    timeout-minutes: 45
     steps:
       - uses: actions/checkout@v4
       - uses: actions/setup-node@v4

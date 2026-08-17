@@ -23,6 +23,18 @@ interface ProfileData {
   badges: { id: string; badge: string; title: string; description: string | null; icon: string | null; earnedAt: string }[];
   certificates: { id: string; courseTitle: string; issuedAt: string; code: string }[];
   stats: { coursesActive: number; coursesCompleted: number; lessonsCompleted: number; quizzesPassed: number };
+  recentLogins: { id: string; ipHash: string; userAgent: string | null; createdAt: string; revoked: boolean; isCurrent: boolean }[];
+}
+
+/** Shortens a User-Agent into a readable "browser on OS" hint. */
+function summarizeUserAgent(ua: string | null): string {
+  if (!ua) return "Dispositivo desconhecido";
+  const match = ua.match(/(Chrome|Firefox|Safari|Edge|Opera|Edg\/|CriOS|FxiOS)\/([\d.]+)/);
+  const os = ua.match(/(Windows|Mac OS X|Linux|Android|iPhone|iPad)/);
+  const browser = match
+    ? match[1].replace("Edg/", "Edge").replace("CriOS", "Chrome").replace("FxiOS", "Firefox")
+    : "Navegador";
+  return `${browser}${os ? ` · ${os[1].replace("Mac OS X", "macOS")}` : ""}`;
 }
 
 const badgeIcons: Record<string, string> = {
@@ -35,8 +47,10 @@ export default function PerfilPage() {
   const { data: session, status } = useSession();
   const router = useRouter();
   const [profile, setProfile] = useState<ProfileData | null>(null);
+  const [revokingId, setRevokingId] = useState<string | null>(null);
+  const [revokeError, setRevokeError] = useState("");
   const [loading, setLoading] = useState(true);
-  const [activeTab, setActiveTab] = useState<"overview" | "badges" | "certificates">("overview");
+  const [activeTab, setActiveTab] = useState<"overview" | "badges" | "certificates" | "security">("overview");
 
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
@@ -49,7 +63,7 @@ export default function PerfilPage() {
       } catch {} finally { setLoading(false); }
     }
     load();
-  }, [session, router]);
+  }, [session, router, status]);
 
   if (!session?.user) return null;
 
@@ -167,6 +181,7 @@ export default function PerfilPage() {
             { id: "overview" as const, label: "Visão Geral", icon: "👤" },
             { id: "badges" as const, label: `Badges (${profile.badges.length})`, icon: "🏅" },
             { id: "certificates" as const, label: `Certificados (${profile.certificates.length})`, icon: "🎓" },
+            { id: "security" as const, label: "Segurança", icon: "🔒" },
           ].map((tab) => (
             <button
               key={tab.id}
@@ -283,6 +298,91 @@ export default function PerfilPage() {
                     >
                       Ver
                     </Link>
+                  </div>
+                ))}
+              </div>
+            )}
+          </div>
+        )}
+
+        {activeTab === "security" && (
+          <div className="rounded-xl border border-zinc-200 bg-white p-5 shadow-sm dark:border-zinc-700 dark:bg-zinc-900">
+            <div className="mb-4 flex items-start justify-between gap-4">
+              <div>
+                <h3 className="font-semibold text-zinc-900 dark:text-white">Sessões recentes</h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Últimos 10 logins na sua conta. Endereços IP são armazenados apenas como hash — nunca exibidos.
+                </p>
+              </div>
+            </div>
+            {revokeError && (
+              <div className="mb-4 rounded-lg bg-red-50 p-3 text-sm text-red-600 dark:bg-red-900/30 dark:text-red-400">
+                {revokeError}
+              </div>
+            )}
+            {profile.recentLogins.length === 0 ? (
+              <p className="py-8 text-center text-sm text-zinc-400">Nenhuma sessão registrada ainda.</p>
+            ) : (
+              <div className="space-y-2">
+                {profile.recentLogins.map((l) => (
+                  <div key={l.id} className="flex items-center justify-between gap-3 rounded-lg bg-zinc-50 p-3 dark:bg-zinc-800">
+                    <div className="flex items-center gap-3">
+                      <div className="flex h-9 w-9 items-center justify-center rounded-lg bg-zinc-100 text-sm dark:bg-zinc-700">
+                        💻
+                      </div>
+                      <div>
+                        <p className="text-sm font-medium text-zinc-900 dark:text-white">
+                          {summarizeUserAgent(l.userAgent)}
+                        </p>
+                        <p className="text-xs text-zinc-400">
+                          {new Date(l.createdAt).toLocaleString("pt-BR", { dateStyle: "short", timeStyle: "short" })}
+                        </p>
+                      </div>
+                    </div>
+                    <div className="flex shrink-0 items-center gap-2">
+                      {l.isCurrent && (
+                        <span className="rounded-full bg-green-100 px-2 py-0.5 text-[10px] font-medium text-green-700 dark:bg-green-900 dark:text-green-300">
+                          Esta sessão
+                        </span>
+                      )}
+                      {l.revoked && (
+                        <span className="rounded-full bg-zinc-200 px-2 py-0.5 text-[10px] font-medium text-zinc-500 dark:bg-zinc-700 dark:text-zinc-400">
+                          Encerrada
+                        </span>
+                      )}
+                      {!l.isCurrent && !l.revoked && (
+                        <button
+                          onClick={async () => {
+                            setRevokeError("");
+                            setRevokingId(l.id);
+                            try {
+                              const res = await fetch(`/api/profile/sessions/${l.id}/revoke`, {
+                                method: "POST",
+                              });
+                              if (!res.ok) {
+                                const data = await res.json().catch(() => ({}));
+                                setRevokeError(data.error || "Não foi possível encerrar a sessão.");
+                              } else {
+                                setProfile({
+                                  ...profile,
+                                  recentLogins: profile.recentLogins.map((s) =>
+                                    s.id === l.id ? { ...s, revoked: true } : s
+                                  ),
+                                });
+                              }
+                            } catch {
+                              setRevokeError("Não foi possível encerrar a sessão.");
+                            } finally {
+                              setRevokingId(null);
+                            }
+                          }}
+                          disabled={revokingId === l.id}
+                          className="rounded-lg border border-red-200 px-2.5 py-1 text-xs font-medium text-red-600 transition hover:bg-red-50 disabled:opacity-50 dark:border-red-800 dark:text-red-400 dark:hover:bg-red-950/40"
+                        >
+                          {revokingId === l.id ? "Encerrando..." : "Encerrar"}
+                        </button>
+                      )}
+                    </div>
                   </div>
                 ))}
               </div>

@@ -27,6 +27,87 @@ export default function SettingsPage() {
   const notifyAlert = useNotificationAlert();
   const [saving, setSaving] = useState<string | null>(null);
   const push = usePushNotifications();
+  // 2FA (email code on next login) — stored on the User model, not in the
+  // notification settings, so it is fetched from /api/profile.
+  const [twoFactorEnabled, setTwoFactorEnabled] = useState(false);
+  const [twoFactorLoading, setTwoFactorLoading] = useState(true);
+  // 2FA recovery codes: shown exactly once at generation time.
+  const [recoveryRemaining, setRecoveryRemaining] = useState<number | null>(null);
+  const [recoveryCodes, setRecoveryCodes] = useState<string[] | null>(null);
+  const [recoveryLoading, setRecoveryLoading] = useState(false);
+
+  useEffect(() => {
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/profile");
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setTwoFactorEnabled(!!data?.user?.twoFactorEnabled);
+        }
+      } catch {
+        // best-effort — the toggle just stays off
+      } finally {
+        if (!cancelled) setTwoFactorLoading(false);
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, []);
+
+  useEffect(() => {
+    if (!twoFactorEnabled || twoFactorLoading) return;
+    let cancelled = false;
+    (async () => {
+      try {
+        const res = await fetch("/api/profile/2fa/recovery-codes");
+        if (res.ok) {
+          const data = await res.json();
+          if (!cancelled) setRecoveryRemaining(data.remaining ?? 0);
+        }
+      } catch {
+        // best-effort — the line just stays empty
+      }
+    })();
+    return () => {
+      cancelled = true;
+    };
+  }, [twoFactorEnabled, twoFactorLoading]);
+
+  const handleGenerateRecoveryCodes = async () => {
+    setRecoveryLoading(true);
+    try {
+      const res = await fetch("/api/profile/2fa/recovery-codes", { method: "POST" });
+      if (res.ok) {
+        const data = await res.json();
+        setRecoveryCodes(data.codes || []);
+        setRecoveryRemaining((data.codes || []).length);
+      } else {
+        toast.error("Erro ao gerar códigos de recuperação");
+      }
+    } catch {
+      toast.error("Erro ao gerar códigos de recuperação");
+    } finally {
+      setRecoveryLoading(false);
+    }
+  };
+
+  const handleTwoFactorToggle = async (value: boolean) => {
+    setSaving("twoFactor");
+    const res = await fetch("/api/profile", {
+      method: "PATCH",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ twoFactorEnabled: value }),
+    });
+    if (res.ok) {
+      setTwoFactorEnabled(value);
+      toast.success(value ? "Verificação em duas etapas ativada! 🔐" : "Verificação em duas etapas desativada");
+    } else {
+      toast.error("Erro ao salvar");
+    }
+    setSaving(null);
+  };
 
   useEffect(() => {
     if (status === "unauthenticated") router.push("/login");
@@ -186,6 +267,76 @@ export default function SettingsPage() {
             )}
           </SettingsCard>
 
+          {/* ── Segurança da conta ── */}
+          <SettingsCard title="Segurança da conta" icon="🔐">
+            <ToggleRow
+              label="Verificação em duas etapas (2FA)"
+              description="A cada login, um código de 6 dígitos é enviado ao seu e-mail — proteção extra caso sua senha vaze."
+              enabled={twoFactorEnabled}
+              loading={twoFactorLoading || saving === "twoFactor"}
+              onChange={handleTwoFactorToggle}
+            />
+            {twoFactorEnabled && !twoFactorLoading && (
+              <>
+                <p className="mt-3 rounded-lg bg-green-50 px-3 py-2 text-xs text-green-700 dark:bg-green-950/40 dark:text-green-400">
+                  Ativo — o próximo login exigirá o código enviado por e-mail.
+                </p>
+                <div className="mt-4 border-t border-zinc-100 pt-4 dark:border-zinc-800">
+                  <p className="text-xs font-medium text-zinc-700 dark:text-zinc-300">
+                    Códigos de recuperação
+                  </p>
+                  <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                    {recoveryRemaining === null
+                      ? "Carregando..."
+                      : `Você tem ${recoveryRemaining} ${recoveryRemaining === 1 ? "código válido" : "códigos válidos"} — use um deles caso perca o acesso ao e-mail.`}
+                  </p>
+                  <button
+                    onClick={handleGenerateRecoveryCodes}
+                    disabled={recoveryLoading}
+                    className="mt-3 rounded-lg border border-zinc-300 bg-white px-4 py-2 text-xs font-semibold text-zinc-700 transition hover:bg-zinc-50 disabled:opacity-50 dark:border-zinc-600 dark:bg-zinc-800 dark:text-zinc-300 dark:hover:bg-zinc-700"
+                  >
+                    {recoveryLoading ? "Gerando..." : "Gerar novos códigos de recuperação"}
+                  </button>
+                  <p className="mt-1.5 text-[11px] text-zinc-400">
+                    Gerar novos códigos invalida os anteriores.
+                  </p>
+                </div>
+              </>
+            )}
+          </SettingsCard>
+
+          {/* Recovery codes modal — the codes are shown exactly once. */}
+          {recoveryCodes && recoveryCodes.length > 0 && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/50 p-4" role="dialog" aria-modal="true">
+              <div className="w-full max-w-md rounded-2xl border border-zinc-200 bg-white p-6 shadow-xl dark:border-zinc-700 dark:bg-zinc-900">
+                <h3 className="text-base font-semibold text-zinc-900 dark:text-white">
+                  Seus códigos de recuperação
+                </h3>
+                <p className="mt-1 text-xs text-zinc-500 dark:text-zinc-400">
+                  Salve estes códigos em um lugar seguro. Eles só aparecem{" "}
+                  <strong>uma única vez</strong> — depois de fechar esta janela,
+                  não será possível vê-los novamente.
+                </p>
+                <div className="mt-4 grid grid-cols-2 gap-2">
+                  {recoveryCodes.map((code) => (
+                    <code
+                      key={code}
+                      className="rounded-lg bg-zinc-100 px-3 py-2 text-center font-mono text-sm font-semibold tracking-wide text-zinc-800 dark:bg-zinc-800 dark:text-zinc-200"
+                    >
+                      {code}
+                    </code>
+                  ))}
+                </div>
+                <button
+                  onClick={() => setRecoveryCodes(null)}
+                  className="mt-5 w-full rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200"
+                >
+                  Fechar — já salvei os códigos
+                </button>
+              </div>
+            </div>
+          )}
+
           {/* ── Não Perturbe ── */}
           <SettingsCard title="Não Perturbe" icon="🌙">
             <ToggleRow
@@ -301,6 +452,7 @@ function ToggleRow({
       <button
         onClick={() => onChange(!enabled)}
         disabled={loading}
+        aria-label={label}
         className={`relative inline-flex h-6 w-11 shrink-0 cursor-pointer items-center rounded-full border-2 border-transparent transition-colors duration-200 ease-in-out focus:outline-none disabled:cursor-not-allowed disabled:opacity-50 ${
           enabled ? "bg-zinc-900 dark:bg-zinc-100" : "bg-zinc-200 dark:bg-zinc-700"
         }`}

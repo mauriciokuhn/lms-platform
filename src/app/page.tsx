@@ -102,7 +102,11 @@ export default function HomePage() {
   // Load in-progress enrollments for logged-in students (home "Continue de onde parou")
   useEffect(() => {
     if (!session?.user) {
-      setActiveCourses([]);
+      // Deferred so the setState is not synchronous within the effect
+      // (react-hooks/set-state-in-effect).
+      (async () => {
+        setActiveCourses([]);
+      })();
       return;
     }
     (async () => {

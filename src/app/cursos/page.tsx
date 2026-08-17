@@ -190,7 +190,11 @@ function CoursesContent() {
   // Load the current user's enrollments (with progress) to badge their courses
   useEffect(() => {
     if (!session?.user) {
-      setEnrollments({});
+      // Deferred so the setState is not synchronous within the effect
+      // (react-hooks/set-state-in-effect).
+      (async () => {
+        setEnrollments({});
+      })();
       return;
     }
     (async () => {

@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
@@ -95,7 +95,11 @@ export default function PlanosPage() {
   const [loadingPlan, setLoadingPlan] = useState<string | null>(null);
 
   async function handleSubscribe(plan: Plan) {
-    if (!session?.user) {
+    // The session can still be hydrating when the user clicks right after
+    // page load — resolve it explicitly so a real subscription isn't
+    // misread as "not logged in" (which would bounce the user to /login).
+    const currentSession = (await getSession()) ?? session;
+    if (!currentSession?.user) {
       router.push("/login");
       return;
     }

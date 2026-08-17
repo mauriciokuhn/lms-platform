@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState, use } from "react";
-import { useSession } from "next-auth/react";
+import { useSession, getSession } from "next-auth/react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { StarRating, RatingDistribution } from "@/components/ui/star-rating";
@@ -32,7 +32,7 @@ interface Quiz {
   id: string;
   title: string;
   passingScore: number;
-  _count: { attempts: number };
+  _count: { attempts?: number };
 }
 
 interface InstructorInfo {
@@ -77,6 +77,13 @@ export default function CourseDetailPage({
   const [loading, setLoading] = useState(true);
   const [enrolling, setEnrolling] = useState(false);
   const [isEnrolled, setIsEnrolled] = useState(false);
+  // Lesson to resume: last visited (localStorage, written by the lesson
+  // page), falling back to the first uncompleted lesson, then the first one.
+  const [resumeLessonId, setResumeLessonId] = useState<string | null>(null);
+  // Whether the resume target came from a saved position (pds-last-lesson) vs.
+  // the default fallback — the CTA reads "Continuar Estudos" only when there
+  // is something to actually resume.
+  const [resumedFromSaved, setResumedFromSaved] = useState(false);
 
   // Reviews state
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -148,7 +155,11 @@ export default function CourseDetailPage({
   }, [loading, session, loadReviews]);
 
   async function handleEnroll() {
-    if (!session?.user) {
+    // The session can still be hydrating when the user clicks right after
+    // page load — resolve it explicitly so an enrollment isn't misread as
+    // "not logged in" (which would bounce the user to /login).
+    const currentSession = (await getSession()) ?? session;
+    if (!currentSession?.user) {
       router.push("/login");
       return;
     }
@@ -173,6 +184,54 @@ export default function CourseDetailPage({
       setEnrolling(false);
     }
   }
+
+  // Resolve where "Continuar Estudos" should go — the lesson page already
+  // persists the last visited lesson in localStorage (pds-last-lesson-{id}),
+  // so the CTA can resume exactly where the student stopped instead of
+  // always pointing back at the first lesson.
+  useEffect(() => {
+    if (!course || resumeLessonId !== null) return;
+    // Deferred read so the setState is not synchronous within the effect
+    // (react-hooks/set-state-in-effect).
+    (async () => {
+      try {
+        const saved = window.localStorage.getItem(`pds-last-lesson-${course.id}`);
+        const exists =
+          saved &&
+          course.modules.some((m) => m.lessons.some((l) => l.id === saved));
+        if (exists) {
+          setResumeLessonId(saved);
+          setResumedFromSaved(true);
+          return;
+        }
+      } catch {
+        // corrupted/blocked storage — fall through to the default below
+      }
+      // Fallback: first uncompleted lesson, else the very first one.
+      for (const mod of course.modules) {
+        for (const lesson of mod.lessons) {
+          if (!lesson.progress?.[0]?.completed) {
+            setResumeLessonId(lesson.id);
+            setResumedFromSaved(false);
+            return;
+          }
+        }
+      }
+      setResumeLessonId(course.modules[0]?.lessons[0]?.id ?? null);
+      setResumedFromSaved(false);
+    })();
+  }, [course, resumeLessonId]);
+
+  // First lesson with incomplete progress (secondary "resume" link).
+  const firstUncompletedLessonId = (() => {
+    if (!course) return null;
+    for (const mod of course.modules) {
+      for (const lesson of mod.lessons) {
+        if (!lesson.progress?.[0]?.completed) return lesson.id;
+      }
+    }
+    return null;
+  })();
 
   function getTotalLessons(modules: Module[]) {
     return modules.reduce((acc, m) => acc + m.lessons.length, 0);
@@ -278,37 +337,26 @@ export default function CourseDetailPage({
           <div className="mt-6">
             {isEnrolled ? (
               <div className="flex items-center gap-3">
-                {course.modules[0]?.lessons[0] && (
+                {resumeLessonId && (
                   <Link
-                    href={`/cursos/${id}/aulas/${course.modules[0].lessons[0].id}`}
+                    href={`/cursos/${id}/aulas/${resumeLessonId}`}
                     className="inline-flex items-center gap-2 rounded-lg bg-zinc-900 dark:bg-white px-6 py-2.5 text-sm font-semibold text-white dark:text-zinc-900 transition hover:bg-zinc-800 dark:hover:bg-zinc-200"
                   >
                     <svg className="h-4 w-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                       <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M14.752 11.168l-3.197-2.132A1 1 0 0010 9.87v4.263a1 1 0 001.555.832l3.197-2.132a1 1 0 000-1.664z" />
                     </svg>
-                    {progressPercentage > 0 ? "Continuar Estudos" : "Começar Curso"}
+                    {progressPercentage > 0 || resumedFromSaved ? "Continuar Estudos" : "Começar Curso"}
                   </Link>
                 )}
-                {(() => {
-                  for (const mod of course.modules) {
-                    for (const lesson of mod.lessons) {
-                      if (!lesson.progress?.[0]?.completed) {
-                        if (lesson.id !== course.modules[0]?.lessons[0]?.id) {
-                          return (
-                            <Link
-                              href={`/cursos/${id}/aulas/${lesson.id}`}
-                              className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
-                            >
-                              Ir para última aula não concluída
-                            </Link>
-                          );
-                        }
-                        break;
-                      }
-                    }
-                  }
-                  return null;
-                })()}
+                {firstUncompletedLessonId &&
+                  firstUncompletedLessonId !== resumeLessonId && (
+                    <Link
+                      href={`/cursos/${id}/aulas/${firstUncompletedLessonId}`}
+                      className="rounded-lg border border-zinc-300 dark:border-zinc-700 px-4 py-2.5 text-sm text-zinc-700 dark:text-zinc-300 hover:bg-zinc-50 dark:hover:bg-zinc-800"
+                    >
+                      Ir para última aula não concluída
+                    </Link>
+                  )}
               </div>
             ) : (
               <button
@@ -360,7 +408,7 @@ export default function CourseDetailPage({
                     <div>
                       <h3 className="font-medium text-zinc-900 dark:text-white">{quiz.title}</h3>
                       <p className="text-xs text-zinc-400 dark:text-zinc-500">
-                        Nota mínima: {quiz.passingScore}% | {quiz._count.attempts} tentativa(s)
+                        Nota mínima: {quiz.passingScore}% | {quiz._count.attempts ?? 0} tentativa(s)
                       </p>
                     </div>
                   </div>

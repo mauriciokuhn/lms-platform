@@ -13,12 +13,13 @@ generator client {
 }
 
 // ──────────────────────────────────────────
-// Active datasource: POSTGRESQL
-// switch to SQLite:  node scripts/switch-provider.js sqlite
+// Active datasource: SQLITE
+// switch to PostgreSQL:  node scripts/switch-provider.js postgresql
+//   (then set DATABASE_URL and run `npx prisma generate` + `npx prisma db push`)
 // ──────────────────────────────────────────
 datasource db {
-  provider = "postgresql"
-  url      = env("DATABASE_URL")
+  provider = "sqlite"
+  url      = "file:./dev.db"
 }
 
 // ──────────────────────────────────────────
@@ -83,6 +84,7 @@ model User {
   passwordHash  String?
   role          Role      @default(STUDENT)
   plan          Plan      @default(FREE)
+  twoFactorEnabled Boolean @default(false)
 
   // Instructor-specific fields
   headline String?
@@ -108,9 +110,52 @@ model User {
   clanMemberships   ClanMember[]
   weeklyRankings    WeeklyRanking[]
   subscriptions     Subscription[]
+  loginHistory      LoginHistory[]
+  recoveryCodes     TwoFactorRecoveryCode[]
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
+}
+
+// ──────────────────────────────────────────
+// LOGIN HISTORY (recent sessions shown in the profile)
+// ──────────────────────────────────────────
+
+model LoginHistory {
+  id        String   @id @default(cuid())
+  ipHash    String // SHA-256 of the client IP — never the raw address
+  userAgent String?
+  // SHA-256 of the Auth.js session token — allows revoking the session
+  // remotely (never the raw token). Null for logins we couldn't attribute.
+  sessionTokenHash String?
+  revokedAt        DateTime? // when the user ended this session remotely
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([createdAt])
+}
+
+// ──────────────────────────────────────────
+// 2FA RECOVERY CODES (one-time, shown only at generation)
+// ──────────────────────────────────────────
+
+model TwoFactorRecoveryCode {
+  id        String    @id @default(cuid())
+  // SHA-256 of the plaintext code — never stored raw.
+  codeHash  String
+  usedAt    DateTime?
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  createdAt DateTime @default(now())
+
+  @@index([userId])
+  @@index([codeHash])
 }
 
 // ──────────────────────────────────────────

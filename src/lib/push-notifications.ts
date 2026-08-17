@@ -41,19 +41,22 @@ interface PushPayload {
 // ──────────────────────────────────────────
 
 let vapidConfigured = false;
+let vapidSignature = "";
 
 function ensureVapid() {
-  if (vapidConfigured) return true;
   const publicKey = process.env.NEXT_PUBLIC_VAPID_PUBLIC_KEY;
   const privateKey = process.env.VAPID_PRIVATE_KEY;
   if (!publicKey || !privateKey) return false;
+  const email = process.env.VAPID_EMAIL || "mailto:admin@pontodosaber.com.br";
+  const signature = `${publicKey}|${privateKey}|${email}`;
+  // Cache per configuration, not just a boolean: if the env keys change
+  // (e.g. tests stubbing env between runs), reconfigure web-push instead
+  // of silently keeping the stale VAPID details.
+  if (vapidConfigured && vapidSignature === signature) return true;
   try {
-    webpush.setVapidDetails(
-      process.env.VAPID_EMAIL || "mailto:admin@pontodosaber.com.br",
-      publicKey,
-      privateKey
-    );
+    webpush.setVapidDetails(email, publicKey, privateKey);
     vapidConfigured = true;
+    vapidSignature = signature;
     return true;
   } catch {
     return false;

@@ -7,6 +7,7 @@
 
 import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import type { PrismaClient } from "@prisma/client";
+import { NextRequest } from "next/server";
 
 // ── Mocks (hoisted BEFORE the route is imported) ────────────────────────
 const dbHolder = vi.hoisted(() => ({ prisma: null as PrismaClient | null }));
@@ -33,6 +34,10 @@ import {
 const prisma = getTestDb();
 dbHolder.prisma = prisma;
 
+function mockRequest(): NextRequest {
+  return new NextRequest("http://localhost/perfil");
+}
+
 describe("Profile route", () => {
   beforeAll(async () => {
     await cleanupTestDb();
@@ -43,20 +48,20 @@ describe("Profile route", () => {
   });
 
   it("returns 401 when not authenticated", async () => {
-    expect((await GET()).status).toBe(401);
+    expect((await GET(mockRequest())).status).toBe(401);
   });
 
   it("returns 404 when the session user does not exist in the DB", async () => {
     // Session references a user id that was never created
     authMock.auth.mockResolvedValue(createMockSession({ id: "ghost-user-id" }));
-    expect((await GET()).status).toBe(404);
+    expect((await GET(mockRequest())).status).toBe(404);
   });
 
   it("returns defaults for a fresh user", async () => {
     const user = await createTestUser(prisma, { email: "p-fresh@test.com" });
     authMock.auth.mockResolvedValue(createMockSession({ id: user.id, email: user.email }));
 
-    const res = await GET();
+    const res = await GET(mockRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
 
@@ -89,7 +94,7 @@ describe("Profile route", () => {
     });
     await prisma.enrollment.create({ data: { userId: user.id, courseId: course.id, status: "ACTIVE" } });
 
-    const res = await GET();
+    const res = await GET(mockRequest());
     expect(res.status).toBe(200);
     const data = await res.json();
 

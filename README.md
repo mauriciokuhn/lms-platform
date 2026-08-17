@@ -19,7 +19,7 @@ Plataforma de cursos online (LMS - Learning Management System) completa, moderna
 - **Questionários** — Avaliações com correção automática e nota mínima configurável
 - **Certificado Digital** — Emitido automaticamente ao concluir 100% das aulas + nota mínima de 70%
 - **Gamificação** — XP, badges, streaks, rankings semanais e desafios
-- **Notificações** — Alertas em tempo real via SSE sobre conquistas e cursos
+- **Notificações** — Alertas em tempo real via SSE sobre conquistas, resumos semanais/mensais e streak em risco (email + push do navegador)
 
 ### 👨‍🏫 Para Instrutores
 - **Criação de Cursos** — Dashboard completo para criar módulos, aulas e questionários
@@ -166,6 +166,7 @@ npm run db:push          # Sincronizar schema com banco
 npm run db:seed          # Semear dados iniciais
 npm run db:switch        # Alternar provider Prisma (sqlite ↔ postgresql)
 npm run generate-assets  # Gerar ícones PWA + favicon + OG image
+npm run vapid:generate  # Gerar par de chaves VAPID para notificações push
 npm run env:check        # Validar .env contra o .env.example
 npm run preflight        # Verificar pré-requisitos antes do deploy
 npm run pre-deploy       # Gate completo: env:check + preflight + tsc + lint + test + build
@@ -180,13 +181,15 @@ Todo push na `main` dispara uma cadeia automatizada de qualidade:
 
 | Workflow | Quando roda | O que faz |
 |----------|------------|-----------|
-| `ci.yml` | Todo push/PR | Valida o Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed → `tsc` + lint + vitest + build |
-| `deploy.yml` | Push na `main` | `vercel build` + `vercel deploy --prod` (deploy de produção) |
+| `ci.yml` | Todo push/PR | Lint (env:check + ESLint zero warnings) + Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed + drift check + `tsc` + vitest + build + **e2e Playwright (55 testes) contra o bundle de produção** (`E2E_PRODUCTION=1 E2E_BUILT=1`, serial) |
+| `deploy.yml` | Push na `main` | **Migra o banco de produção primeiro** (`vercel env pull` → `switch-provider postgresql` → `prisma migrate deploy`) e só então `vercel build` + `vercel deploy --prod` — se a migração falhar, o deploy não acontece e o site antigo continua no ar |
 | `e2e-production.yml` | **Após cada deploy**, manual (`workflow_dispatch`) e **a cada 6h** (healthcheck) | Roda `scripts/e2e-production.mjs` contra a produção e reporta o resultado como **commit status** `e2e-production` no SHA deployado |
 | `deploy-preview.yml` | Cada PR | Deploy de preview + **e2e no preview** (commit status `e2e-preview`) + comentário com a URL no PR |
 | `sanity.yml` | (conforme configurado) | Verificações extras do repo |
 
-**Fluxo de um push na main:** `push → ci.yml → deploy.yml (produção) → e2e-production.yml (e2e automático) → commit status verde/vermelho`.
+**Fluxo de um push na main:** `push → ci.yml (valida) → deploy.yml (migra o banco de produção + deploy) → e2e-production.yml (e2e automático) → commit status verde/vermelho`.
+
+> ⚠️ **Migração e pooler do Postgres:** o passo de migração do `deploy.yml` usa o `DATABASE_URL` de produção. Se o banco for Supabase/Neon com **transaction pooler**, troque para o **session pooler** (conexão direta, porta `5432` no Supabase) apenas para o `prisma migrate deploy` — migrações exigem uma conexão de sessão (DDL em transação não funciona no transaction pooler).
 
 ### Variáveis e segredos do CI
 
@@ -290,6 +293,12 @@ AUTH_GOOGLE_SECRET="seu-google-client-secret"
 
 # ===== EMAIL (opcional para dev) =====
 RESEND_API_KEY="re_sua-chave-resend"
+
+# ===== NOTIFICAÇÕES PUSH (opcional para dev) =====
+# Gere as chaves com: npm run vapid:generate
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="sua-chave-publica"
+VAPID_PRIVATE_KEY="sua-chave-privada"
+VAPID_EMAIL="mailto:admin@pontodosaber.com.br"
 ```
 
 > 💡 **Gere um NEXTAUTH_SECRET forte:** `npx -y generate-secret` ou `openssl rand -base64 32`
@@ -307,6 +316,9 @@ No dashboard da Vercel, vá em **Settings → Environment Variables** e adicione
 | `AUTH_GOOGLE_ID` | ⚠️ Se tiver Google login | Client ID |
 | `AUTH_GOOGLE_SECRET` | ⚠️ Se tiver Google login | Client Secret |
 | `RESEND_API_KEY` | ⚠️ Se quiser emails | `re_...` |
+| `NEXT_PUBLIC_VAPID_PUBLIC_KEY` | ⚠️ Se quiser push | Gerada com `npm run vapid:generate` |
+| `VAPID_PRIVATE_KEY` | ⚠️ Se quiser push | Gerada com `npm run vapid:generate` (secreta) |
+| `VAPID_EMAIL` | ⚠️ Se quiser push | `mailto:admin@pontodosaber.com.br` |
 | `STRIPE_SECRET_KEY` | ⚠️ Se tiver cursos pagos | `sk_...` |
 | `STRIPE_WEBHOOK_SECRET` | ⚠️ Se tiver cursos pagos | `whsec_...` |
 | `UPLOADTHING_SECRET` | ⚠️ Se tiver uploads | |
@@ -482,6 +494,48 @@ Sem a chave, o sistema funciona normalmente mas os emails são logados no consol
 
 ---
 
+## 📲 Notificações Push (Web Push)
+
+A plataforma usa [Web Push](https://developer.mozilla.org/en-US/docs/Web/API/Push_API)
+para enviar alertas para o navegador **mesmo com o site fechado**: streak em
+risco 🔥, resumo da semana e resumo mensal.
+
+### Como Ativar
+
+```bash
+# 1. Gere o par de chaves VAPID (rode uma única vez)
+npm run vapid:generate
+
+# 2. Copie as chaves geradas para o .env.local (dev) e para o Vercel (prod):
+NEXT_PUBLIC_VAPID_PUBLIC_KEY="chave-publica"
+VAPID_PRIVATE_KEY="chave-privada"
+VAPID_EMAIL="mailto:admin@pontodosaber.com.br"
+```
+
+> 🔐 A `VAPID_PRIVATE_KEY` é **secreta** — nunca a exponha no cliente nem a
+> commite. A `NEXT_PUBLIC_VAPID_PUBLIC_KEY` é pública (o navegador a usa para
+> assinar a inscrição).
+
+### Como Funciona
+
+1. **Inscrição** — O usuário ativa push em **Configurações → Notificações
+   Push**; o navegador cria a inscrição com o Service Worker e ela é salva em
+   `POST /api/push/subscribe` (modelo `PushSubscription`).
+2. **Envio** — `notifyUserPush()` (em `src/lib/push-notifications.ts`) entrega
+   a notificação a **todos os dispositivos inscritos** do usuário; inscrições
+   expiradas (HTTP 410) são removidas automaticamente.
+3. **Exibição** — `public/sw.js` recebe o evento `push`, exibe a notificação
+   com ações (Abrir/Fechar) e abre a URL correta no clique.
+4. **Gatilhos** — `POST /api/progress/streak-alert` (streak em risco, máximo
+   1x/24h), `POST /api/notifications/weekly-summary` (1x/7d) e
+   `POST /api/notifications/monthly-summary` (1x/mês). Todos são chamados pelo
+   dashboard e são **idempotentes** — sem cron necessário.
+
+Sem as chaves VAPID configuradas, o envio é **simulado** (logado, sem entrega)
+para não quebrar o fluxo em desenvolvimento.
+
+---
+
 ## ✅ Checklist de Verificação Pré-Deploy
 
 Use este checklist antes de publicar:
@@ -510,12 +564,17 @@ npm run test
 # Testes E2E (Playwright — requer instalação do browser)
 npx playwright install
 npm run test:e2e
+
+# E2E contra o bundle de produção (como no CI):
+# PORT=3000 E2E_PRODUCTION=1 npx playwright test --config src/tests/e2e/playwright.config.ts
+#   (fixe a porta — o ambiente define PORT=0 — e a 1ª execução roda `next build`;
+#    para reaproveitar um build já feito, adicione E2E_BUILT=1, como no CI)
 ```
 
 | Camada | Quantidade |
 | --- | --- |
-| Unit (Vitest) | **382 testes / 52 arquivos** — libs (email, auth, youtube, upload, db, logger, rate-limit, contexts, SSE event bus, offline/IndexedDB, push, uploadthing, i18n) e rotas de API (checkout Stripe, webhook, upload, quizzes, certificados, gamificação, reviews, social, SSE, auth/rate-limit, admin, instructor…)
-| E2E (Playwright) | **18 testes** — login por papel, catálogo, certificado, segurança — rodados também contra o bundle de produção no CI |
+| Unit (Vitest) | **505 testes / 73 arquivos** — libs (email, auth, youtube, upload, db, logger, rate-limit, login-challenge, two-factor, recovery-codes, login-audit, session-token, contexts, SSE event bus, offline/IndexedDB, push, uploadthing, i18n) e rotas de API (checkout Stripe, webhook, upload, quizzes, certificados, gamificação, reviews, social, SSE, push/subscribe, resumos semanais/mensais, streak-alert, auth/rate-limit, 2FA, códigos de recuperação, admin — incluindo revogação de sessões, limpeza do histórico e resumo diário de segurança…)
+| E2E (Playwright) | **55 testes** — login por papel (incluindo desafio anti-bot, fluxo 2FA com código por e-mail e **happy path completo com código de recuperação**), histórico de sessões e revogação remota, catálogo, certificado, segurança, checkout (matrícula em curso gratuito + assinatura de plano), visitante (páginas públicas + exigência de login), painel do admin (métricas do dashboard, card do resumo diário de segurança, gestão de cursos, alunos + encerrar sessões de alunos, analytics, ciclo criar+excluir curso, drawer mobile), painel do instrutor (métricas, lista de cursos, criação de curso), dashboard do aluno (estatísticas, meta diária, XP semanal, gamificação, sino de notificações) e configurações (som/tom, vibração, inscrição push real no navegador, não perturbe, 2FA + códigos de recuperação) — rodados também contra o bundle de produção (`E2E_PRODUCTION=1`) no CI |
 | Cobertura | `npx vitest run --coverage` para o relatório completo |
 
 ---

@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { quizId } = await params;
+    const session = await auth();
 
     const quiz = await db.quiz.findUnique({
       where: { id: quizId },
@@ -17,6 +18,16 @@ export async function GET(
           orderBy: { orderIndex: "asc" },
           include: {
             options: true,
+          },
+        },
+        // The quiz page shows the student's own attempt budget
+        // ("usadas X de Y"). Guests get `questions` instead — Prisma
+        // rejects an empty _count select.
+        _count: {
+          select: {
+            ...(session?.user
+              ? { attempts: { where: { userId: session.user.id } } }
+              : { questions: true }),
           },
         },
       },

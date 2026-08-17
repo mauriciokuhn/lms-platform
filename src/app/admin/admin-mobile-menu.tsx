@@ -83,6 +83,7 @@ export function AdminMobileMenu({ userName }: AdminMobileMenuProps) {
           <span className="text-lg font-bold text-zinc-900 dark:text-white">Ponto do Saber</span>
           <button
             onClick={() => setIsOpen(false)}
+            aria-label="Fechar menu"
             className="flex h-8 w-8 items-center justify-center rounded-lg text-zinc-500 hover:bg-zinc-100 dark:hover:bg-zinc-800"
           >
             <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">

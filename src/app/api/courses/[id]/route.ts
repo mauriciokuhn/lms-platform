@@ -9,6 +9,7 @@ export async function GET(
 ) {
   try {
     const { id } = await params;
+    const session = await auth();
 
     const course = await db.course.findUnique({
       where: { id },
@@ -19,7 +20,13 @@ export async function GET(
             lessons: {
               orderBy: { orderIndex: "asc" },
               include: {
-                progress: true,
+                // Only the requesting user's own progress — the "Seu
+                // progresso" widgets on the course/lesson pages rely on it.
+                // Returning all users' progress made every visitor appear at
+                // 100% on any course someone else had completed.
+                ...(session?.user
+                  ? { progress: { where: { userId: session.user.id } } }
+                  : {}),
               },
             },
           },
@@ -32,7 +39,18 @@ export async function GET(
                 options: true,
               },
             },
-            _count: { select: { attempts: true } },
+            // "N tentativa(s)" on the course page is the student's own
+            // attempt budget — count only this user's attempts (guests get
+            // none, matching the locked quizzes they see). Prisma rejects an
+            // empty _count select, so guests get `questions` instead (the
+            // page reads `attempts ?? 0`).
+            _count: {
+              select: {
+                ...(session?.user
+                  ? { attempts: { where: { userId: session.user.id } } }
+                  : { questions: true }),
+              },
+            },
           },
         },
         instructor: {

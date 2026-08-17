@@ -21,6 +21,25 @@ jobs:
       - name: Pull Vercel Environment Information
         run: vercel pull --yes --environment=production --token=${{ secrets.VERCEL_TOKEN }}
 
+      # Apply the committed migrations to the production Postgres BEFORE the
+      # build. The new code (remote session revocation, login history, 2FA)
+      # queries tables/columns that must exist at runtime — deploying first
+      # would 500 every protected route. `vercel env pull` fetches the
+      # production DATABASE_URL; `migrate deploy` is the README's documented
+      # production procedure. If a migration fails the job stops here and
+      # production keeps serving the previous release (safe failure mode).
+      - name: Install dependencies (for Prisma CLI)
+        run: npm ci
+
+      - name: Apply database migrations (production)
+        run: |
+          vercel env pull --yes --environment=production .env.production --token=${{ secrets.VERCEL_TOKEN }}
+          node scripts/switch-provider.js postgresql
+          set -a
+          . ./.env.production
+          set +a
+          npx prisma migrate deploy
+
       - name: Build Project Artifacts
         run: vercel build --prod --token=${{ secrets.VERCEL_TOKEN }}
 

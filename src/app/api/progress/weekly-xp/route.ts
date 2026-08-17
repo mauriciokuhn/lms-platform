@@ -111,9 +111,12 @@ export async function GET() {
 
     // ── Platform comparison ─────────────────────────────────────
     // Aggregate the same 7-day window across ALL users (lessons +50 XP
-    // each and achievement bonuses) to compute the user's weekly rank
-    // and the platform average. Cached 60s (same convention as the
-    // weekly-ranking route) since it scans all users' activity.
+    // each and achievement bonuses) to compute the platform average and
+    // the sorted weekly ranking. Cached 60s (same convention as the
+    // weekly-ranking route) since it scans all users' activity. The
+    // cached payload is USER-AGNOSTIC (sorted [userId, xp] pairs + totals)
+    // — the caller's rank is derived AFTER the cache hit, so two students
+    // in the same 60s window never see each other's rank.
     const comparison = await cache.getOrSet(
       `progress:weekly-xp:cmp:${start.toISOString().slice(0, 10)}`,
       async () => {
@@ -143,22 +146,23 @@ export async function GET() {
         }
 
         const ranks = Array.from(userWeeklyXp.entries()).sort((a, b) => b[1] - a[1]);
-        const myRankIndex = ranks.findIndex(([uid]) => uid === userId);
-        const weeklyRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
         const totalParticipants = ranks.length;
         const platformAverage =
           totalParticipants > 0
             ? Math.round(ranks.reduce((sum, [, xp]) => sum + xp, 0) / totalParticipants)
             : 0;
-        const topPercent =
-          weeklyRank !== null && totalParticipants > 0
-            ? Math.round((weeklyRank / totalParticipants) * 100)
-            : null;
 
-        return { weeklyRank, totalParticipants, platformAverage, topPercent };
+        return { ranks, totalParticipants, platformAverage };
       },
       60
     );
+
+    const myRankIndex = comparison.ranks.findIndex(([uid]) => uid === userId);
+    const weeklyRank = myRankIndex >= 0 ? myRankIndex + 1 : null;
+    const topPercent =
+      weeklyRank !== null && comparison.totalParticipants > 0
+        ? Math.round((weeklyRank / comparison.totalParticipants) * 100)
+        : null;
 
     return NextResponse.json({
       days,
@@ -166,10 +170,10 @@ export async function GET() {
       totalLessons,
       monthAverage,
       weekDailyAverage,
-      weeklyRank: comparison.weeklyRank,
+      weeklyRank,
       totalParticipants: comparison.totalParticipants,
       platformAverage: comparison.platformAverage,
-      topPercent: comparison.topPercent,
+      topPercent,
     });
   } catch (error) {
     logger.error("GET /api/progress/weekly-xp error", {

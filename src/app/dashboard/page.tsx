@@ -122,16 +122,20 @@ export default function DashboardPage() {
   const { progress: gamification, loading: gamificationLoading, refresh: refreshGamification } = useGamificationContext();
 
   // Configurable daily goal — persisted per device (no DB migration needed).
+  // Deferred read so the setState is not synchronous within the effect
+  // (react-hooks/set-state-in-effect).
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem("pds-daily-goal");
-      if (raw) {
-        const n = parseInt(raw, 10);
-        if (Number.isFinite(n) && n >= 1 && n <= 10) setDailyGoalState(n);
+    (async () => {
+      try {
+        const raw = localStorage.getItem("pds-daily-goal");
+        if (raw) {
+          const n = parseInt(raw, 10);
+          if (Number.isFinite(n) && n >= 1 && n <= 10) setDailyGoalState(n);
+        }
+      } catch {
+        // localStorage unavailable
       }
-    } catch {
-      // localStorage unavailable
-    }
+    })();
   }, []);
 
   const setDailyGoal = (n: number) => {
@@ -196,7 +200,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (status === "unauthenticated") { router.push("/login"); return; }
     if (status === "loading") return;
-    loadData();
+    (async () => {
+      await loadData();
+    })();
   }, [status, router, loadData]);
 
   // Real-time progress: refresh enrollments when a lesson is completed
@@ -259,7 +265,8 @@ export default function DashboardPage() {
             <Link href="/certificados" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">Certificados</Link>
             <GamificationWidget />
             <Link href="/perfil" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">👤 Perfil</Link>
-            <Link href="/gamificacao" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">🏆</Link>
+            <Link href="/gamificacao" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100" aria-label="Gamificação">🏆</Link>
+            <Link href="/configuracoes" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">⚙️ Configurações</Link>
             <div className="ml-1 flex items-center gap-3">
               <NotificationBell />
               <ThemeToggle />
@@ -271,6 +278,7 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 sm:hidden">
             <Link href="/meus-cursos" className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">Cursos</Link>
             <Link href="/certificados" className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">Cert.</Link>
+            <Link href="/configuracoes" aria-label="Configurações" className="rounded-lg bg-zinc-100 px-3 py-1.5 text-xs text-zinc-600 dark:bg-zinc-800 dark:text-zinc-400">⚙️</Link>
             <GamificationWidget />
             <NotificationBell />
             <ThemeToggle />

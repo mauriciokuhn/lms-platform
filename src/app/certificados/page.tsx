@@ -48,7 +48,7 @@ export default function CertificatesPage() {
     }
 
     loadData();
-  }, [session, router]);
+  }, [session, router, status]);
 
   function handlePrint() {
     window.print();
