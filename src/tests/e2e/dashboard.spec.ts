@@ -52,6 +52,8 @@ let storageStateFile: string;
 test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
+  // Unique IP to avoid the shared-IP rate limiter (authLimiter 60/min).
+  await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.100.1.${Date.now() % 200}` });
   await page.goto("/login");
   await page.fill("#email", STUDENT_EMAIL);
   await page.fill("#password", STUDENT_PASSWORD);

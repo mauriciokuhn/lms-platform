@@ -142,4 +142,69 @@ test.describe("Instructor Panel", () => {
 
     await close();
   });
+
+  test("instructor profile page loads and allows editing", async ({ browser }) => {
+    const { page, close } = await openInstructor(browser, "/instrutor/perfil");
+
+    await expect(
+      page.getByRole("heading", { name: /Perfil|profile/i })
+    ).toBeVisible({ timeout: 20000 });
+
+    // The form fields should be visible (pre-filled from the API).
+    const nameInput = page.locator("input").first();
+    await expect(nameInput).toBeVisible({ timeout: 10000 });
+
+    // The save button is present.
+    await expect(
+      page.getByRole("button", { name: /Salvar|Save/i })
+    ).toBeVisible();
+
+    await close();
+  });
+
+  test("course preview page renders the course content", async ({ browser }) => {
+    const { page, close } = await openInstructor(browser, "/instrutor/cursos");
+
+    await expect(page.getByRole("heading", { name: "Meus Cursos" })).toBeVisible({
+      timeout: 20000,
+    });
+
+    // Get the course ID from the first course link (goes to /admin/cursos/[id]/editar).
+    const courseLink = page.getByRole("link", { name: "Introdução ao JavaScript" });
+    await expect(courseLink).toBeVisible({ timeout: 10000 });
+    const href = await courseLink.getAttribute("href");
+    const courseId = href?.match(/cursos\/([^/]+)/)?.[1];
+    expect(courseId).toBeTruthy();
+
+    // Navigate directly to the instructor preview page.
+    await page.goto(`/instrutor/cursos/${courseId}/preview`);
+
+    // The preview page should show the course title.
+    await expect(
+      page.getByText("Introdução ao JavaScript")
+    ).toBeVisible({ timeout: 20000 });
+
+    await close();
+  });
+
+  test("course cards show correct data and navigation", async ({ browser }) => {
+    const { page, close } = await openInstructor(browser, "/instrutor/cursos");
+
+    await expect(page.getByRole("heading", { name: "Meus Cursos" })).toBeVisible({
+      timeout: 20000,
+    });
+
+    // Course cards show title, status, lesson count and student count.
+    const jsCard = page.getByRole("link", { name: "Introdução ao JavaScript" });
+    await expect(jsCard).toBeVisible({ timeout: 10000 });
+
+    // The card shows lesson count and student count.
+    await expect(page.getByText(/aulas/).first()).toBeVisible();
+    await expect(page.getByText(/alunos/).first()).toBeVisible();
+
+    // The "+ Novo Curso" button is present.
+    await expect(page.getByRole("link", { name: "+ Novo Curso" })).toBeVisible();
+
+    await close();
+  });
 });

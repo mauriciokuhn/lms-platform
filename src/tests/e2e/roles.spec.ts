@@ -27,6 +27,7 @@ test.beforeAll(async ({ browser }) => {
   // --- Admin login ---
   const adminCtx = await browser.newContext();
   const adminPage = await adminCtx.newPage();
+  await adminPage.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.100.10.${Date.now() % 200}` });
   await adminPage.goto("/login");
   await adminPage.fill("#email", "admin@lms.com");
   await adminPage.fill("#password", "admin123");
@@ -39,6 +40,7 @@ test.beforeAll(async ({ browser }) => {
   // --- Instructor login ---
   const instrCtx = await browser.newContext();
   const instrPage = await instrCtx.newPage();
+  await instrPage.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.100.11.${Date.now() % 200}` });
   await instrPage.goto("/login");
   await instrPage.fill("#email", "lucas@lms.com");
   await instrPage.fill("#password", "instrutor123");
@@ -51,6 +53,7 @@ test.beforeAll(async ({ browser }) => {
   // --- Student login ---
   const studCtx = await browser.newContext();
   const studPage = await studCtx.newPage();
+  await studPage.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.100.12.${Date.now() % 200}` });
   await studPage.goto("/login");
   await studPage.fill("#email", "maria@email.com");
   await studPage.fill("#password", "123456");

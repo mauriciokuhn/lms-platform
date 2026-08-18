@@ -39,6 +39,7 @@ let storageStateFile: string;
 test.beforeAll(async ({ browser }) => {
   const context = await browser.newContext();
   const page = await context.newPage();
+  await page.context().setExtraHTTPHeaders({ "x-forwarded-for": `10.100.2.${Date.now() % 200}` });
   await page.goto("/login");
   await page.fill("#email", STUDENT_EMAIL);
   await page.fill("#password", STUDENT_PASSWORD);
