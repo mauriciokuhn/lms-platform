@@ -131,6 +131,7 @@ describe("push notifications", () => {
 
   it("removes the subscription and reports expired on a 410", async () => {
     vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "public-key");
     const user = await createTestUser(prisma, { email: "push-410@test.com" });
     await saveSubscription(user.id, SUBSCRIPTION);
 
@@ -147,6 +148,7 @@ describe("push notifications", () => {
 
   it("returns the error for generic send failures", async () => {
     vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "public-key");
     const boom = new Error("network");
     sendNotificationMock.mockRejectedValue(boom);
 
@@ -196,6 +198,7 @@ describe("push notifications", () => {
 
   it("notifyUserPush cleans up expired subscriptions (410) during fan-out", async () => {
     vi.stubEnv("VAPID_PRIVATE_KEY", "private-key");
+    vi.stubEnv("NEXT_PUBLIC_VAPID_PUBLIC_KEY", "public-key");
     const user = await createTestUser(prisma, { email: "push-expired@test.com" });
     await saveSubscription(user.id, SUBSCRIPTION);
     sendNotificationMock.mockRejectedValue({ statusCode: 410 });
