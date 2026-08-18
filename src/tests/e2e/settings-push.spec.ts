@@ -17,8 +17,7 @@ import os from "os";
 
 test.describe.configure({ mode: "serial" });
 
-const STUDENT_EMAIL = "maria@email.com";
-const STUDENT_PASSWORD = "123456";
+
 
 /** Kill CSS animations/transitions so they can't race with clicks/assertions. */
 async function disableAnimations(page: Page) {
