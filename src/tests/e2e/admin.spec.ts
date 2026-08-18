@@ -180,8 +180,9 @@ test.describe("Admin Panel", () => {
       await expect(page.getByText(title, { exact: true })).toBeVisible({ timeout: 10000 });
     }
 
-    // Published courses carry a green badge.
-    await expect(page.getByText("Publicado", { exact: true }).first()).toBeVisible({ timeout: 10000 });
+    // Courses show their approval status badge. The seed creates courses
+    // with approvalStatus="draft", so they display as "Rascunho".
+    await expect(page.getByText("Rascunho", { exact: true }).first()).toBeVisible({ timeout: 10000 });
 
     // Pendentes tab: either pending rows or the empty state, depending on DB.
     await page.getByRole("button", { name: /⏳ Pendentes/ }).click();

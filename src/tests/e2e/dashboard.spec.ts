@@ -119,11 +119,12 @@ test.describe("Student Dashboard", () => {
     const { page, close } = await openStudent(browser);
 
     const main = page.locator("main");
-    // Weekly XP section — the seeded student has no lesson completions in the
-    // last 7 days, so the chart renders with +0 XP. The comparison block also
-    // renders once other users have activity, so scope to the exact span.
+    // Weekly XP section — the seeded student has achievements created at
+    // seed time (within the last 7 days), so the chart shows accumulated XP.
+    // The comparison block also renders once other users have activity, so
+    // scope to the exact span.
     await expect(main.getByText("Evolução de XP")).toBeVisible({ timeout: 20000 });
-    await expect(main.getByText("+0 XP", { exact: true })).toBeVisible({ timeout: 15000 });
+    await expect(main.getByText(/\+\d+ XP/).first()).toBeVisible({ timeout: 15000 });
     await expect(main.getByText(/nos últimos 7 dias/)).toBeVisible();
 
     // Gamification summary: XP bar (level 2 / 350 XP) + streak display.
