@@ -181,7 +181,7 @@ Todo push na `main` dispara uma cadeia automatizada de qualidade:
 
 | Workflow | Quando roda | O que faz |
 |----------|------------|-----------|
-| `ci.yml` | Todo push/PR | Lint (env:check + ESLint zero warnings) + Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed + drift check + `tsc` + vitest + build + **e2e Playwright (55 testes) contra o bundle de produção** (`E2E_PRODUCTION=1 E2E_BUILT=1`, serial) |
+| `ci.yml` | Todo push/PR | Lint (env:check + ESLint zero warnings) + Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed + drift check + `tsc` + vitest + build + **e2e Playwright (58 testes) contra o bundle de produção** (`E2E_PRODUCTION=1 E2E_BUILT=1`, serial) |
 | `deploy.yml` | Push na `main` | **Migra o banco de produção primeiro** (`vercel env pull` → `switch-provider postgresql` → `prisma migrate deploy`) e só então `vercel build` + `vercel deploy --prod` — se a migração falhar, o deploy não acontece e o site antigo continua no ar |
 | `e2e-production.yml` | **Após cada deploy**, manual (`workflow_dispatch`) e **a cada 6h** (healthcheck) | Roda `scripts/e2e-production.mjs` contra a produção e reporta o resultado como **commit status** `e2e-production` no SHA deployado |
 | `deploy-preview.yml` | Cada PR | Deploy de preview + **e2e no preview** (commit status `e2e-preview`) + comentário com a URL no PR |

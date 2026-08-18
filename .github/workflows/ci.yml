@@ -153,7 +153,7 @@ jobs:
 
   e2e:
     runs-on: ubuntu-latest
-    # 45 Playwright tests, serial (workers=1 in CI) with 2 retries — leave
+    # 58 Playwright tests, serial (workers=1 in CI) with 2 retries — leave
     # room for the build + cold bundle boot on top of the suite itself.
     timeout-minutes: 45
     steps:
