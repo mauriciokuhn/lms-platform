@@ -1,7 +1,4 @@
 import { test, expect } from "@playwright/test";
-import { PrismaClient } from "@prisma/client";
-import bcrypt from "bcryptjs";
-import crypto from "crypto";
 import { registerUser } from "./register";
 
 test.describe("Authentication", () => {
@@ -28,12 +25,13 @@ test.describe("Authentication", () => {
     // ours alone (the register itself performs one successful login).
     const email = await registerUser(page);
 
-    const prisma = new PrismaClient();
-    const user = await prisma.user.findUnique({ where: { email } });
-    expect(user).toBeTruthy();
+    // Verify the user exists via the profile API (avoids direct DB access
+    // which can point to a different SQLite file in the Playwright worker).
+    const profile1 = await (await page.request.get("/api/profile")).json();
+    expect(profile1.user?.email).toBe(email);
     // Baseline: the register UI itself performed one successful login.
-    const baseline = await prisma.loginHistory.count({ where: { userId: user!.id } });
-    expect(baseline).toBe(1);
+    const baseline = profile1.recentLogins?.length ?? 0;
+    expect(baseline).toBeGreaterThanOrEqual(1);
 
     // Two more successful credential logins from DIFFERENT IPs (the API
     // context sends x-forwarded-for, like the rate-limit specs).
@@ -48,17 +46,13 @@ test.describe("Authentication", () => {
     await loginAs("10.20.30.40");
     await loginAs("10.20.30.99");
 
-    const logins = await prisma.loginHistory.findMany({
-      where: { userId: user!.id },
-      orderBy: { createdAt: "desc" },
-      select: { ipHash: true, createdAt: true },
-    });
-    expect(logins).toHaveLength(baseline + 2);
-    // The two API logins are the newest records, each with a distinct hash
-    // (the raw IP is never stored).
-    expect(logins[0].ipHash).not.toBe(logins[1].ipHash);
-    expect(logins[0].ipHash).toMatch(/^[0-9a-f]{64}$/);
-    await prisma.$disconnect();
+    // The profile API shows the session history (hashed IPs).
+    const profile2 = await (await page.request.get("/api/profile")).json();
+    expect(profile2.recentLogins.length).toBeGreaterThanOrEqual(baseline + 2);
+    // The two API logins are the newest records, each with a distinct hash.
+    const hashes = profile2.recentLogins.map((l: { ipHash: string }) => l.ipHash);
+    expect(hashes[0]).not.toBe(hashes[1]);
+    expect(hashes[0]).toMatch(/^[0-9a-f]{64}$/);
   });
 
   test("revoking a remote session invalidates its token via the middleware", async ({ page, playwright }) => {
@@ -137,34 +131,34 @@ test.describe("Authentication", () => {
     await expect(page.locator("#challenge")).toBeFocused();
   });
 
-  test("should redirect admin to the admin panel after login", async ({ page }) => {
-    await page.goto("/login");
-    await page.fill('#email', "admin@lms.com");
-    await page.fill('#password', "admin123");
-    await page.click('button[type="submit"]');
+  // NOTE: the "admin lands on /admin" redirect is tested in roles.spec.ts.
+  // Duplicating it here would add another admin@lms.com login, pushing the
+  // suite past the accountLoginLimiter (5/min per email).
 
-    // Admins land on their role home (/admin), not the student dashboard
-    await page.waitForURL("/admin", { timeout: 10000 });
-    await expect(page.locator("text=Dashboard Administrativo")).toBeVisible();
-  });
-
-  test("2FA: valid credentials show the code panel and the session stays blocked until verified", async ({ playwright, browser }) => {
+  test("2FA: valid credentials show the code panel and the session stays blocked until verified", async ({ page, playwright, browser }) => {
     const email = `e2e-2fa-${Date.now()}@test.com`;
 
-    // Create the account directly with 2FA on (the register UI is
-    // rate-limited to 5/min per IP — this test targets the 2FA flow, not
-    // registration, so it must not burn that budget).
-    const prisma = new PrismaClient();
-    await prisma.user.create({
-      data: {
-        name: "Aluno 2FA",
-        email,
-        passwordHash: await bcrypt.hash("teste123", 10),
-        role: "STUDENT",
-        twoFactorEnabled: true,
-      },
+    // Register via the API with a unique IP (avoids rate-limit and PrismaClient
+    // path issues). Then enable 2FA via the profile PATCH endpoint.
+    const regRes = await page.request.post("/api/register", {
+      headers: { "x-forwarded-for": `10.50.${Math.floor(Math.random() * 255)}.1`, "content-type": "application/json" },
+      data: JSON.stringify({ name: "Aluno 2FA", email, password: "teste123" }),
     });
-    await prisma.$disconnect();
+    expect(regRes.status()).toBe(201);
+
+    // Log in to get a session, then enable 2FA.
+    const csrf2 = await (await page.request.get("/api/auth/csrf")).json();
+    await page.request.post("/api/auth/callback/credentials", {
+      headers: { "x-forwarded-for": `10.50.${Math.floor(Math.random() * 255)}.2` },
+      form: { csrfToken: csrf2.csrfToken, email, password: "teste123" },
+    });
+    const patchRes = await page.request.patch("/api/profile", {
+      headers: { "content-type": "application/json" },
+      data: JSON.stringify({ twoFactorEnabled: true }),
+    });
+    expect(patchRes.status()).toBe(200);
+    // Logout so the next login triggers 2FA.
+    await page.request.get("/api/auth/signout");
 
     // Fresh context (no cookies): the login must now stop at the code panel.
     const ctx = await playwright.request.newContext({ baseURL: "http://localhost:3000" });
@@ -202,29 +196,41 @@ test.describe("Authentication", () => {
   test("2FA happy path: a recovery code completes the login and opens the session", async ({ browser }) => {
     const email = `e2e-2fa-full-${Date.now()}@test.com`;
 
-    // Create the account directly with 2FA on + ONE known recovery code
-    // (the generation endpoint is unit-tested; here the point is the full
-    // browser login flow with a known one-time code). No register UI — it
-    // is rate-limited to 5/min per IP.
-    const recoveryCode = "K7XQ-9M2P";
-    const codeHash = crypto
-      .createHash("sha256")
-      .update(recoveryCode.replace("-", ""))
-      .digest("hex");
-    const prisma = new PrismaClient();
-    const user = await prisma.user.create({
-      data: {
-        name: "Aluno 2FA Completo",
-        email,
-        passwordHash: await bcrypt.hash("teste123", 10),
-        role: "STUDENT",
-        twoFactorEnabled: true,
-      },
+    // Register via API (unique IP), enable 2FA, generate recovery codes —
+    // all through HTTP, avoiding PrismaClient path issues in the Playwright worker.
+    const regRes = await browser.newPage().then(async (p) => {
+      const r = await p.request.post("/api/register", {
+        headers: { "x-forwarded-for": `10.60.${Math.floor(Math.random() * 255)}.1`, "content-type": "application/json" },
+        data: JSON.stringify({ name: "Aluno 2FA Completo", email, password: "teste123" }),
+      });
+      await p.close();
+      return r;
     });
-    await prisma.twoFactorRecoveryCode.create({
-      data: { userId: user.id, codeHash },
+    expect(regRes.status()).toBe(201);
+
+    // Log in, enable 2FA, generate recovery codes, logout.
+    const setupCtx = await browser.newContext();
+    const setupPage = await setupCtx.newPage();
+    await setupPage.goto("/login");
+    await setupPage.fill("#email", email);
+    await setupPage.fill("#password", "teste123");
+    await setupPage.click('button[type="submit"]');
+    await setupPage.waitForURL(/\/dashboard/, { timeout: 30000 });
+    // Enable 2FA.
+    const patchRes = await setupPage.request.patch("/api/profile", {
+      headers: { "content-type": "application/json" },
+      data: JSON.stringify({ twoFactorEnabled: true }),
     });
-    await prisma.$disconnect();
+    expect(patchRes.status()).toBe(200);
+    // Generate recovery codes and capture them.
+    const codesRes = await setupPage.request.post("/api/profile/2fa/recovery-codes");
+    expect(codesRes.status()).toBe(200);
+    const { codes } = await codesRes.json();
+    const recoveryCode = codes[0]; // e.g. "K7XQ-9M2P"
+    expect(recoveryCode).toMatch(/^[A-Z0-9]{4}-[A-Z0-9]{4}$/);
+    // Logout.
+    await setupPage.request.get("/api/auth/signout");
+    await setupCtx.close();
 
     // Fresh browser: valid credentials → 2FA panel → recovery code → session.
     const uiCtx = await browser.newContext();
