@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { LogoutButton } from "@/components/logout-button";
 
 interface Metrics {
   totalStudents: number;
@@ -103,19 +104,56 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="p-8">
-      <div className="mb-8">
-        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-          Dashboard Administrativo
-        </h1>
-        <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-          Visão geral da plataforma
-        </p>
-      </div>
+    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
+      {/* Header */}
+      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
+        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
+          <div className="flex items-center gap-3">
+            <Link href="/" className="text-lg font-bold text-zinc-900 dark:text-white">
+              Ponto do Saber
+            </Link>
+            <span className="hidden rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400 sm:inline">
+              Admin
+            </span>
+          </div>
+          <div className="flex items-center gap-2">
+            <Link href="/admin/cursos" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
+              Cursos
+            </Link>
+            <Link href="/admin/alunos" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
+              Alunos
+            </Link>
+            <Link href="/admin/analytics" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
+              Analytics
+            </Link>
+            <Link href="/configuracoes" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
+              ⚙️
+            </Link>
+            <LogoutButton />
+          </div>
+        </div>
+      </header>
 
-      {loading ? (
+      <main className="mx-auto max-w-7xl px-4 py-8">
+        <div className="mb-8">
+          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+            Dashboard Administrativo
+          </h1>
+          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+            Visão geral da plataforma
+          </p>
+        </div>
+
+        {loading ? (
         <div className="flex items-center justify-center py-20">
-          <div className="h-8 w-8 animate-spin rounded-full border-2 border-zinc-300 dark:border-zinc-600 border-t-zinc-900 dark:border-t-white" />
+          <div className="text-center">
+            <div className="relative mx-auto mb-4 h-12 w-12">
+              <div className="absolute inset-0 rounded-full bg-gradient-to-br from-zinc-100 to-zinc-200 dark:from-zinc-800 dark:to-zinc-700" />
+              <div className="absolute inset-0 flex items-center justify-center text-lg">📊</div>
+              <div className="absolute inset-0 animate-spin rounded-full border-2 border-zinc-200 border-t-zinc-600 dark:border-zinc-700 dark:border-t-zinc-300" />
+            </div>
+            <p className="text-sm text-zinc-500 dark:text-zinc-400">Carregando métricas...</p>
+          </div>
         </div>
       ) : (
         <>
@@ -446,6 +484,7 @@ export default function AdminDashboard() {
           </section>
         </>
       )}
+      </main>
     </div>
   );
 }
