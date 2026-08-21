@@ -4,6 +4,7 @@ import { Suspense, useEffect, useState, useCallback, useRef } from "react";
 import Link from "next/link";
 import { useSearchParams, useRouter } from "next/navigation";
 import { useSession } from "next-auth/react";
+import { getRoleHome } from "@/lib/role-home";
 import { useResumeCourse } from "@/lib/hooks/use-resume-course";
 import { ResumeCourseButton } from "@/components/ui/resume-course-button";
 import { StarRating } from "@/components/ui/star-rating";
@@ -338,12 +339,20 @@ function CoursesContent() {
             </Link>
             <ThemeToggle />
             <LocaleSwitcher />
-            <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
-              Entrar
-            </Link>
-            <Link href="/register" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600">
-              Cadastre-se
-            </Link>
+            {session?.user ? (
+              <Link href={getRoleHome(session.user.role as string | undefined)} className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600">
+                {session.user.role === "ADMIN" ? "Painel Admin" : session.user.role === "INSTRUCTOR" ? "Painel Instrutor" : "Dashboard"}
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-zinc-100">
+                  Entrar
+                </Link>
+                <Link href="/register" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-700 dark:hover:bg-zinc-600">
+                  Cadastre-se
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>

@@ -52,6 +52,7 @@ export default function HomePage() {
   const { resumeCourse, continueLoading } = useResumeCourse();
   const carouselRef = useRef<HTMLDivElement>(null);
   const rafRef = useRef<number>(0);
+  const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
 
   const scrollCarousel = useCallback((direction: "left" | "right") => {
     const el = carouselRef.current;
@@ -149,12 +150,26 @@ export default function HomePage() {
             <a href="#cursos" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Cursos</a>
             <Link href="/categorias" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Categorias</Link>
             <a href="#recursos" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Recursos</a>
-            <a href="#faq" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">FAQ</a>              <Link href="/instrutores" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Instrutores</Link>
+            <a href="#faq" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">FAQ</a>
+            <Link href="/instrutores" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Instrutores</Link>
             <Link href="/planos" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">Planos</Link>
           </nav>
           <div className="flex items-center gap-2">
             <ThemeToggle />
             <LocaleSwitcher />
+            {/* Mobile hamburger */}
+            <button
+              onClick={() => setMobileMenuOpen(!mobileMenuOpen)}
+              className="flex h-9 w-9 items-center justify-center rounded-lg text-zinc-600 hover:bg-zinc-100 dark:text-zinc-400 dark:hover:bg-zinc-800 sm:hidden"
+              aria-label={mobileMenuOpen ? "Fechar menu" : "Abrir menu"}
+              aria-expanded={mobileMenuOpen}
+            >
+              {mobileMenuOpen ? (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" /></svg>
+              ) : (
+                <svg className="h-5 w-5" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M4 6h16M4 12h16M4 18h16" /></svg>
+              )}
+            </button>
             {session?.user ? (
               <>
                 <Link href={getRoleHome(session.user.role as string | undefined)} className="rounded-xl bg-zinc-900 px-5 py-2 text-sm font-semibold text-white transition-all hover:bg-zinc-800 hover:shadow-lg dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
@@ -173,6 +188,19 @@ export default function HomePage() {
             )}
           </div>
         </div>
+        {/* Mobile menu overlay */}
+        {mobileMenuOpen && (
+          <div className="border-t border-zinc-200 bg-white px-4 py-4 dark:border-zinc-800 dark:bg-zinc-950 sm:hidden">
+            <nav className="flex flex-col gap-3">
+              <a href="#cursos" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Cursos</a>
+              <Link href="/categorias" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Categorias</Link>
+              <a href="#recursos" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Recursos</a>
+              <a href="#faq" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">FAQ</a>
+              <Link href="/instrutores" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Instrutores</Link>
+              <Link href="/planos" onClick={() => setMobileMenuOpen(false)} className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Planos</Link>
+            </nav>
+          </div>
+        )}
       </header>
 
       {/* ─── HERO ─── */}
@@ -586,7 +614,7 @@ export default function HomePage() {
               { q: "Como é feito o acompanhamento do progresso?", a: "O sistema salva automaticamente seu progresso nos vídeos, marca aulas concluídas e mostra estatísticas detalhadas no dashboard." },
             ].map((faq, i) => (
               <div key={i} className="overflow-hidden rounded-xl border border-zinc-200 dark:border-zinc-800">
-                <button onClick={() => setActiveFaq(activeFaq === i ? null : i)} className="flex w-full items-center justify-between px-6 py-4 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
+                <button onClick={() => setActiveFaq(activeFaq === i ? null : i)} aria-expanded={activeFaq === i} className="flex w-full items-center justify-between px-6 py-4 text-left transition hover:bg-zinc-50 dark:hover:bg-zinc-900">
                   <span className="font-medium text-zinc-900 dark:text-white">{faq.q}</span>
                   <svg className={`h-5 w-5 text-zinc-400 transition-transform ${activeFaq === i ? "rotate-180" : ""}`} fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" /></svg>
                 </button>
@@ -641,16 +669,16 @@ export default function HomePage() {
             <div>
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Recursos</h3>
               <ul className="mt-3 space-y-2">
-                <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Videoaulas</span></li>
+                <li><Link href="/cursos" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Videoaulas</Link></li>
                 <li><Link href="/validar-certificado" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Validar Certificado</Link></li>
-                <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Progresso</span></li>
+                <li><Link href="/dashboard" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Progresso</Link></li>
               </ul>
             </div>
             <div>
               <h3 className="text-sm font-semibold text-zinc-900 dark:text-white">Legal</h3>
               <ul className="mt-3 space-y-2">
-                <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Privacidade</span></li>
-                <li><span className="text-sm text-zinc-500 dark:text-zinc-400">Termos de Uso</span></li>
+                <li><Link href="/privacidade" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Privacidade</Link></li>
+                <li><Link href="/termos" className="text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">Termos de Uso</Link></li>
               </ul>
             </div>
           </div>
