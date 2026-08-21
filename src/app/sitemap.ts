@@ -1,7 +1,7 @@
 import { db } from "@/lib/db";
 
 export default async function sitemap() {
-  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ponto-do-saber.vercel.app";
+  const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://pontodosaber.vercel.app";
 
   // Static pages
   const staticPages = [

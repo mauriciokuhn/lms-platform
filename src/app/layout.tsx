@@ -4,7 +4,7 @@ import { Providers } from "@/components/providers";
 import { ToastProvider } from "@/components/ui/toast-provider";
 import { DemoBanner } from "@/components/ui/demo-banner";
 
-const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://ponto-do-saber.vercel.app";
+const baseUrl = process.env.NEXT_PUBLIC_APP_URL || "https://pontodosaber.vercel.app";
 
 export const metadata: Metadata = {
   metadataBase: new URL(baseUrl),

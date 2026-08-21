@@ -173,7 +173,7 @@ function baseHtml(content: string) {
     </div>
     <div class="footer">
       <p>
-        Este é um email automático da <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://ponto-do-saber.vercel.app"}">Ponto do Saber</a>.<br />
+        Este é um email automático da <a href="${process.env.NEXT_PUBLIC_APP_URL || "https://pontodosaber.vercel.app"}">Ponto do Saber</a>.<br />
         Se você não solicitou esta mensagem, ignore este email.<br />
         &copy; ${new Date().getFullYear()} Ponto do Saber. Todos os direitos reservados.
       </p>

@@ -79,7 +79,7 @@ jobs:
       - name: Rodar e2e contra produção
         id: e2e
         env:
-          E2E_BASE: ${{ vars.E2E_BASE_URL || 'https://lms-platform-beryl-gamma.vercel.app' }}
+          E2E_BASE: ${{ vars.E2E_BASE_URL || 'https://pontodosaber.vercel.app' }}
         run: node scripts/e2e-production.mjs
 
       - name: "Status: sucesso"

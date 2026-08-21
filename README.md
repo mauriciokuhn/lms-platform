@@ -250,7 +250,7 @@ Crie contas nos serviços abaixo. Todos têm plano gratuito generoso.
 4. Clique em **Create Credentials → OAuth Client ID**
 5. Application Type: **Web Application**
 6. Em **Authorized redirect URIs**, adicione:
-   - `https://ponto-do-saber.vercel.app/api/auth/callback/google` (produção)
+   - `https://pontodosaber.vercel.app/api/auth/callback/google` (produção)
    - `http://localhost:3000/api/auth/callback/google` (desenvolvimento)
 7. Copie o **Client ID** e **Client Secret**
 
@@ -259,7 +259,7 @@ Crie contas nos serviços abaixo. Todos têm plano gratuito generoso.
 2. No dashboard, ative o **modo de teste** para desenvolvimento
 3. Vá em **Developers → API Keys** e copie a **Secret Key** (sk_test_...)
 4. Vá em **Developers → Webhooks** e adicione endpoint:
-   - URL: `https://ponto-do-saber.vercel.app/api/checkout/webhook`
+   - URL: `https://pontodosaber.vercel.app/api/checkout/webhook`
    - Events: `checkout.session.completed`
    - Copie o **Signing Secret** (whsec_...)
 
@@ -311,8 +311,8 @@ No dashboard da Vercel, vá em **Settings → Environment Variables** e adicione
 |----------|-------------|-------|
 | `DATABASE_URL` | ✅ Sim | `postgresql://...` — **transaction pooler** (Supabase: porta `6543` + `?pgbouncer=true&connection_limit=1`; Neon: endpoint pooling) |
 | `NEXTAUTH_SECRET` | ✅ Sim | Secreto forte |
-| `NEXTAUTH_URL` | ✅ Sim | `https://ponto-do-saber.vercel.app` |
-| `NEXT_PUBLIC_APP_URL` | ✅ Sim | `https://ponto-do-saber.vercel.app` |
+| `NEXTAUTH_URL` | ✅ Sim | `https://pontodosaber.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | ✅ Sim | `https://pontodosaber.vercel.app` |
 | `AUTH_GOOGLE_ID` | ⚠️ Se tiver Google login | Client ID |
 | `AUTH_GOOGLE_SECRET` | ⚠️ Se tiver Google login | Client Secret |
 | `RESEND_API_KEY` | ⚠️ Se quiser emails | `re_...` |
