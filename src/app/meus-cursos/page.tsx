@@ -31,6 +31,9 @@ export default function MyCoursesPage() {
   const router = useRouter();
   const [enrollments, setEnrollments] = useState<Enrollment[]>([]);
   const [loading, setLoading] = useState(true);
+  const [search, setSearch] = useState("");
+  const [sortBy, setSortBy] = useState<"recent" | "progress" | "title">("recent");
+  const [filterStatus, setFilterStatus] = useState<"all" | "active" | "completed">("all");
   const { resumeCourse, continueLoading } = useResumeCourse();
 
   useEffect(() => {
@@ -80,7 +83,41 @@ export default function MyCoursesPage() {
 
       <main className="mx-auto max-w-7xl px-4 py-8">
         <h1 className="mb-2 text-2xl font-bold text-zinc-900 dark:text-white">Meus Cursos</h1>
-        <p className="mb-8 text-zinc-500 dark:text-zinc-400">Acompanhe o progresso dos seus cursos</p>
+        <p className="mb-4 text-zinc-500 dark:text-zinc-400">Acompanhe o progresso dos seus cursos</p>
+
+        {/* Filters */}
+        {!loading && enrollments.length > 0 && (
+          <div className="mb-6 flex flex-wrap gap-3">
+            <div className="relative min-w-[200px] flex-1">
+              <svg className="absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-zinc-400" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" /></svg>
+              <input
+                type="text"
+                value={search}
+                onChange={(e) => setSearch(e.target.value)}
+                placeholder="Buscar nos meus cursos..."
+                className="w-full rounded-lg border border-zinc-300 bg-white py-2 pl-10 pr-4 text-sm shadow-sm placeholder:text-zinc-400 focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white dark:placeholder:text-zinc-500"
+              />
+            </div>
+            <select
+              value={filterStatus}
+              onChange={(e) => setFilterStatus(e.target.value as typeof filterStatus)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+            >
+              <option value="all">Todos</option>
+              <option value="active">Em andamento</option>
+              <option value="completed">Concluídos</option>
+            </select>
+            <select
+              value={sortBy}
+              onChange={(e) => setSortBy(e.target.value as typeof sortBy)}
+              className="rounded-lg border border-zinc-300 bg-white px-3 py-2 text-sm shadow-sm focus:border-zinc-500 focus:outline-none focus:ring-1 focus:ring-zinc-500 dark:border-zinc-600 dark:bg-zinc-800 dark:text-white"
+            >
+              <option value="recent">Mais recentes</option>
+              <option value="progress">Maior progresso</option>
+              <option value="title">Ordem alfabética</option>
+            </select>
+          </div>
+        )}
 
         {loading ? (
           <div className="flex items-center justify-center py-20">
@@ -111,7 +148,19 @@ export default function MyCoursesPage() {
           </div>
         ) : (
           <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {enrollments.map((enrollment) => (
+            {enrollments
+              .filter((e) => {
+                const q = search.toLowerCase();
+                const matchesSearch = !q || e.course.title.toLowerCase().includes(q) || (e.course.category || "").toLowerCase().includes(q);
+                const matchesStatus = filterStatus === "all" || (filterStatus === "active" ? e.status === "ACTIVE" : e.status === "COMPLETED");
+                return matchesSearch && matchesStatus;
+              })
+              .sort((a, b) => {
+                if (sortBy === "progress") return b.progress.percentage - a.progress.percentage;
+                if (sortBy === "title") return a.course.title.localeCompare(b.course.title);
+                return new Date(b.enrolledAt).getTime() - new Date(a.enrolledAt).getTime();
+              })
+              .map((enrollment) => (
               <Link
                 key={enrollment.id}
                 href={`/cursos/${enrollment.course.id}`}

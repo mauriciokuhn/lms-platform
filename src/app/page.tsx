@@ -647,6 +647,17 @@ export default function HomePage() {
         </div>
       </section>
 
+      {/* ─── BACK TO TOP ─── */}
+      <div className="sticky bottom-6 z-40 flex justify-end px-4 pb-4 pointer-events-none">
+        <a
+          href="#"
+          className="pointer-events-auto flex h-10 w-10 items-center justify-center rounded-full border border-zinc-200 bg-white/90 shadow-lg backdrop-blur-sm transition-all hover:-translate-y-0.5 hover:shadow-xl dark:border-zinc-700 dark:bg-zinc-800/90 dark:hover:bg-zinc-700"
+          aria-label="Voltar ao topo"
+        >
+          <svg className="h-4 w-4 text-zinc-600 dark:text-zinc-300" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 15l7-7 7 7" /></svg>
+        </a>
+      </div>
+
       {/* ─── FOOTER ─── */}
       <footer className="border-t border-zinc-200 bg-white px-4 py-12 dark:border-zinc-800 dark:bg-zinc-950">
         <div className="mx-auto max-w-7xl">
