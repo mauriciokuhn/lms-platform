@@ -181,7 +181,7 @@ Todo push na `main` dispara uma cadeia automatizada de qualidade:
 
 | Workflow | Quando roda | O que faz |
 |----------|------------|-----------|
-| `ci.yml` | Todo push/PR | Lint (env:check + ESLint zero warnings) + Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed + drift check + `tsc` + vitest + build + **e2e Playwright (68 testes) contra o bundle de produção** (`E2E_PRODUCTION=1 E2E_BUILT=1`, serial) |
+| `ci.yml` | Todo push/PR | Lint (env:check + ESLint zero warnings) + Postgres real (service container): `switch-provider` → `prisma generate` → `migrate deploy` → seed + drift check + `tsc` + vitest + build + **e2e Playwright (58 testes) contra o bundle de produção** (`E2E_PRODUCTION=1 E2E_BUILT=1`, serial) |
 | `deploy.yml` | Push na `main` | **Migra o banco de produção primeiro** (`vercel env pull` → `switch-provider postgresql` → `prisma migrate deploy`) e só então `vercel build` + `vercel deploy --prod` — se a migração falhar, o deploy não acontece e o site antigo continua no ar |
 | `e2e-production.yml` | **Após cada deploy**, manual (`workflow_dispatch`) e **a cada 6h** (healthcheck) | Roda `scripts/e2e-production.mjs` contra a produção e reporta o resultado como **commit status** `e2e-production` no SHA deployado |
 | `deploy-preview.yml` | Cada PR | Deploy de preview + **e2e no preview** (commit status `e2e-preview`) + comentário com a URL no PR |
@@ -229,7 +229,7 @@ Crie contas nos serviços abaixo. Todos têm plano gratuito generoso.
 
 ### 1.2 Neon (PostgreSQL — Banco de Dados)
 1. Acesse [neon.tech](https://neon.tech/) e crie uma conta
-2. Crie um projeto com nome `lms-platform`
+2. Crie um projeto com nome `ponto-do-saber`
 3. Copie a **connection string** (começa com `postgresql://...`)
 4. Recomendado: use a branch `main` para produção
 
@@ -250,7 +250,7 @@ Crie contas nos serviços abaixo. Todos têm plano gratuito generoso.
 4. Clique em **Create Credentials → OAuth Client ID**
 5. Application Type: **Web Application**
 6. Em **Authorized redirect URIs**, adicione:
-   - `https://seu-site.vercel.app/api/auth/callback/google` (produção)
+   - `https://ponto-do-saber.vercel.app/api/auth/callback/google` (produção)
    - `http://localhost:3000/api/auth/callback/google` (desenvolvimento)
 7. Copie o **Client ID** e **Client Secret**
 
@@ -259,7 +259,7 @@ Crie contas nos serviços abaixo. Todos têm plano gratuito generoso.
 2. No dashboard, ative o **modo de teste** para desenvolvimento
 3. Vá em **Developers → API Keys** e copie a **Secret Key** (sk_test_...)
 4. Vá em **Developers → Webhooks** e adicione endpoint:
-   - URL: `https://seu-site.vercel.app/api/checkout/webhook`
+   - URL: `https://ponto-do-saber.vercel.app/api/checkout/webhook`
    - Events: `checkout.session.completed`
    - Copie o **Signing Secret** (whsec_...)
 
@@ -311,8 +311,8 @@ No dashboard da Vercel, vá em **Settings → Environment Variables** e adicione
 |----------|-------------|-------|
 | `DATABASE_URL` | ✅ Sim | `postgresql://...` — **transaction pooler** (Supabase: porta `6543` + `?pgbouncer=true&connection_limit=1`; Neon: endpoint pooling) |
 | `NEXTAUTH_SECRET` | ✅ Sim | Secreto forte |
-| `NEXTAUTH_URL` | ✅ Sim | `https://seu-site.vercel.app` |
-| `NEXT_PUBLIC_APP_URL` | ✅ Sim | `https://seu-site.vercel.app` |
+| `NEXTAUTH_URL` | ✅ Sim | `https://ponto-do-saber.vercel.app` |
+| `NEXT_PUBLIC_APP_URL` | ✅ Sim | `https://ponto-do-saber.vercel.app` |
 | `AUTH_GOOGLE_ID` | ⚠️ Se tiver Google login | Client ID |
 | `AUTH_GOOGLE_SECRET` | ⚠️ Se tiver Google login | Client Secret |
 | `RESEND_API_KEY` | ⚠️ Se quiser emails | `re_...` |
