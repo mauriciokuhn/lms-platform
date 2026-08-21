@@ -2,7 +2,9 @@
 
 import { useEffect, useState, use } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { StarRating } from "@/components/ui/star-rating";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface InstructorCourse {
   id: string;
@@ -34,6 +36,7 @@ export default function InstructorProfilePage({
   params: Promise<{ id: string }>;
 }) {
   const { id } = use(params);
+  const { data: session } = useSession();
   const [instructor, setInstructor] = useState<InstructorProfile | null>(null);
   const [loading, setLoading] = useState(true);
 
@@ -82,12 +85,24 @@ export default function InstructorProfilePage({
           <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
             Ponto do Saber
           </Link>
-          <Link
-            href="/instrutores"
-            className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
-          >
-            ← Todos os instrutores
-          </Link>
+          <div className="flex items-center gap-3">
+            <Link
+              href="/instrutores"
+              className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white"
+            >
+              ← Todos os instrutores
+            </Link>
+            <ThemeToggle />
+            {session?.user ? (
+              <Link href="/dashboard" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900">
+                Dashboard
+              </Link>
+            ) : (
+              <Link href="/login" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900">
+                Entrar
+              </Link>
+            )}
+          </div>
         </div>
       </header>
 

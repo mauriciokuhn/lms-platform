@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
 import { ThemeToggle } from "@/components/ui/theme-toggle";
 import { LocaleSwitcher } from "@/lib/i18n/locale-switcher";
 
@@ -55,6 +56,7 @@ const categoryMeta: Record<string, { icon: string; gradient: string; description
 };
 
 export default function CategoriasPage() {
+  const { data: session } = useSession();
   const [categories, setCategories] = useState<CategoryData[]>([]);
   const [loading, setLoading] = useState(true);
   const [totalCourses, setTotalCourses] = useState(0);
@@ -127,12 +129,20 @@ export default function CategoriasPage() {
             </Link>
             <ThemeToggle />
             <LocaleSwitcher />
-            <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">
-              Entrar
-            </Link>
-            <Link href="/register" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
-              Cadastre-se
-            </Link>
+            {session?.user ? (
+              <Link href="/dashboard" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white transition-colors">
+                  Entrar
+                </Link>
+                <Link href="/register" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900 dark:hover:bg-zinc-200">
+                  Cadastre-se
+                </Link>
+              </>
+            )}
           </nav>
         </div>
       </header>

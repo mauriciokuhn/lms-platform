@@ -2,6 +2,8 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
+import { useSession } from "next-auth/react";
+import { ThemeToggle } from "@/components/ui/theme-toggle";
 
 interface Instructor {
   id: string;
@@ -14,6 +16,7 @@ interface Instructor {
 }
 
 export default function InstructorsPage() {
+  const { data: session } = useSession();
   const [instructors, setInstructors] = useState<Instructor[]>([]);
   const [loading, setLoading] = useState(true);
 
@@ -41,12 +44,26 @@ export default function InstructorsPage() {
           <Link href="/" className="text-xl font-bold text-zinc-900 dark:text-white">
             Ponto do Saber
           </Link>
-          <Link
-            href="/cursos"
-            className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900"
-          >
-            Ver Cursos
-          </Link>
+          <div className="flex items-center gap-2">
+            <Link href="/cursos" className="hidden sm:inline text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">
+              Cursos
+            </Link>
+            <ThemeToggle />
+            {session?.user ? (
+              <Link href="/dashboard" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900">
+                Dashboard
+              </Link>
+            ) : (
+              <>
+                <Link href="/login" className="text-sm font-medium text-zinc-600 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white">
+                  Entrar
+                </Link>
+                <Link href="/register" className="rounded-lg bg-zinc-900 px-4 py-2 text-sm font-semibold text-white transition hover:bg-zinc-800 dark:bg-zinc-100 dark:text-zinc-900">
+                  Cadastre-se
+                </Link>
+              </>
+            )}
+          </div>
         </div>
       </header>
 

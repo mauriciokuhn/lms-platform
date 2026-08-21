@@ -2,7 +2,6 @@
 
 import { useEffect, useState } from "react";
 import Link from "next/link";
-import { LogoutButton } from "@/components/logout-button";
 
 interface Metrics {
   totalStudents: number;
@@ -104,47 +103,17 @@ export default function AdminDashboard() {
   }, []);
 
   return (
-    <div className="min-h-screen bg-zinc-50 dark:bg-zinc-950">
-      {/* Header */}
-      <header className="border-b border-zinc-200 bg-white dark:border-zinc-800 dark:bg-zinc-900">
-        <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-4">
-          <div className="flex items-center gap-3">
-            <Link href="/" className="text-lg font-bold text-zinc-900 dark:text-white">
-              Ponto do Saber
-            </Link>
-            <span className="hidden rounded-full bg-red-100 px-2.5 py-0.5 text-xs font-medium text-red-700 dark:bg-red-900/40 dark:text-red-400 sm:inline">
-              Admin
-            </span>
-          </div>
-          <div className="flex items-center gap-2">
-            <Link href="/admin/cursos" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
-              Cursos
-            </Link>
-            <Link href="/admin/alunos" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
-              Alunos
-            </Link>
-            <Link href="/admin/analytics" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
-              Analytics
-            </Link>
-            <Link href="/configuracoes" className="hidden text-sm text-zinc-500 hover:text-zinc-900 dark:text-zinc-400 dark:hover:text-white sm:block">
-              ⚙️
-            </Link>
-            <LogoutButton />
-          </div>
-        </div>
-      </header>
+    <div className="p-8">
+      <div className="mb-8">
+        <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
+          Dashboard Administrativo
+        </h1>
+        <p className="mt-1 text-zinc-500 dark:text-zinc-400">
+          Visão geral da plataforma
+        </p>
+      </div>
 
-      <main className="mx-auto max-w-7xl px-4 py-8">
-        <div className="mb-8">
-          <h1 className="text-2xl font-bold text-zinc-900 dark:text-white">
-            Dashboard Administrativo
-          </h1>
-          <p className="mt-1 text-zinc-500 dark:text-zinc-400">
-            Visão geral da plataforma
-          </p>
-        </div>
-
-        {loading ? (
+      {loading ? (
         <div className="flex items-center justify-center py-20">
           <div className="text-center">
             <div className="relative mx-auto mb-4 h-12 w-12">
@@ -484,7 +453,6 @@ export default function AdminDashboard() {
           </section>
         </>
       )}
-      </main>
     </div>
   );
 }
